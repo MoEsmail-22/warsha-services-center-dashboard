@@ -22,6 +22,23 @@ function MapClickHandler({ onPositionChange }) {
   return null;
 }
 
+/**
+ * Leaflet measures its box only once. If the box changes size afterwards (the modal
+ * finishing its layout, a scrollbar appearing, the screen resizing), only part of the
+ * map gets tiles and the rest stays gray — so measure again on every size change.
+ */
+function MapResizeWatcher() {
+  const map = useMap();
+
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+
+  return null;
+}
+
 function MapViewUpdater({ position }) {
   const map = useMap();
 
@@ -58,7 +75,15 @@ export default function LeafletLocationMap({ position, onPositionChange, missing
         scrollWheelZoom
         className="h-[300px] w-full rounded-xl sm:h-[380px]"
       >
-        <TileLayer attribution={attribution} url={tileUrl} minZoom={1} maxZoom={20} crossOrigin />
+        <TileLayer
+          attribution={attribution}
+          url={tileUrl}
+          minZoom={1}
+          // OpenStreetMap has no tiles past zoom 19; going further shows a gray map.
+          maxZoom={MAPTILER_API_KEY ? 20 : 19}
+          crossOrigin
+        />
+        <MapResizeWatcher />
         <MapClickHandler onPositionChange={onPositionChange} />
         <MapViewUpdater position={position} />
         <Marker

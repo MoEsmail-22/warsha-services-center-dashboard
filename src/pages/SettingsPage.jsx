@@ -9,24 +9,34 @@ import { useNotify } from '@/hooks/useNotify';
 import GoogleMapsPreview from '@/components/settings/GoogleMapsPreview';
 import LocationPicker from '@/components/settings/LocationPicker';
 import WorkingHoursEditor from '@/components/settings/WorkingHoursEditor';
+import WorkshopImagePicker from '@/components/settings/WorkshopImagePicker';
+
+const DESCRIPTION_MAX_LENGTH = 1000;
+
+const DESCRIPTION_FIELDS = [
+  { key: 'descriptionEn', translationKey: 'descriptionEn', dir: 'ltr' },
+  { key: 'descriptionAr', translationKey: 'descriptionAr', dir: 'rtl' },
+];
+
+const EMPTY_FORM = {
+  name: '',
+  addressEn: '',
+  addressAr: '',
+  phone: '',
+  googleMapsUrl: '',
+};
 
 const PROFILE_FIELDS = [
   { key: 'name', type: 'text', translationKey: 'workshopName' },
-  { key: 'address', type: 'text', translationKey: 'address' },
+  { key: 'addressEn', type: 'text', translationKey: 'addressEn' },
+  { key: 'addressAr', type: 'text', translationKey: 'addressAr', dir: 'rtl' },
   { key: 'phone', type: 'tel', translationKey: 'phone' },
-  {
-    key: 'secondaryPhone',
-    type: 'tel',
-    translationKey: 'secondaryPhone',
-    placeholderKey: 'secondaryPhonePlaceholder',
-  },
 ];
 
 const PREFERENCE_FIELDS = [
   { key: 'acceptOnlineBookings', translationKey: 'acceptOnlineBookings' },
   { key: 'showPrices', translationKey: 'showPrices' },
   { key: 'autoSendServiceUpdates', translationKey: 'autoSendUpdates' },
-  { key: 'emailDailySummary', translationKey: 'emailDailySummary' },
 ];
 
 function isGoogleMapsUrl(value) {
@@ -57,8 +67,15 @@ function getFirstOpeningHours(workingHours) {
 
 export default function SettingsPage() {
   const { t } = useAppTranslation('settings');
-  const { data, loading, error, updateWorkshop, saveWorkshopProfile, togglePreference } =
-    useSettings();
+  const {
+    data,
+    loading,
+    error,
+    updateWorkshop,
+    saveWorkshopProfile,
+    saveWorkshopImage,
+    togglePreference,
+  } = useSettings();
   const [workshopForm, setWorkshopForm] = useState(null);
   const notify = useNotify();
   const [saving, setSaving] = useState(false);
@@ -68,28 +85,38 @@ export default function SettingsPage() {
     register,
     handleSubmit: submitForm,
     reset,
+    setValue,
+    getFieldState,
+    watch,
   } = useForm({
-    defaultValues: {
-      name: '',
-      address: '',
-      phone: '',
-      secondaryPhone: '',
-      googleMapsUrl: '',
-    },
+    defaultValues: { ...EMPTY_FORM, descriptionEn: '', descriptionAr: '' },
   });
 
   useEffect(() => {
     if (data?.workshop && !initializedForm.current) {
       reset({
         name: data.workshop.name || '',
-        address: data.workshop.address || '',
+        addressEn: data.workshop.addressEn || '',
+        addressAr: data.workshop.addressAr || '',
         phone: data.workshop.phone || '',
-        secondaryPhone: data.workshop.secondaryPhone || '',
         googleMapsUrl: data.workshop.location?.googleMapsUrl || '',
+        descriptionEn: data.workshop.descriptionEn || '',
+        descriptionAr: data.workshop.descriptionAr || '',
       });
       initializedForm.current = true;
     }
   }, [data?.workshop, reset]);
+
+  // The descriptions are shown as editable text (not placeholders), so fill them
+  // when the profile arrives from the API — unless the user already started typing.
+  const savedDescriptionEn = data?.workshop?.descriptionEn;
+  const savedDescriptionAr = data?.workshop?.descriptionAr;
+  useEffect(() => {
+    if (!getFieldState('descriptionEn').isDirty)
+      setValue('descriptionEn', savedDescriptionEn || '');
+    if (!getFieldState('descriptionAr').isDirty)
+      setValue('descriptionAr', savedDescriptionAr || '');
+  }, [savedDescriptionEn, savedDescriptionAr, getFieldState, setValue]);
 
   const handleSubmit = async (formValues) => {
     const enteredMapsUrl = formValues.googleMapsUrl?.trim() || '';
@@ -117,8 +144,14 @@ export default function SettingsPage() {
       PROFILE_FIELDS.map(({ key }) => [key, formValues[key]?.trim() || data.workshop[key] || ''])
     );
 
+    const descriptions = {
+      descriptionEn: formValues.descriptionEn?.trim() || '',
+      descriptionAr: formValues.descriptionAr?.trim() || '',
+    };
+
     const updates = {
       ...nextWorkshop,
+      ...descriptions,
       location: enteredMapsUrl
         ? { ...currentLocation, googleMapsUrl: enteredMapsUrl }
         : currentLocation,
@@ -128,7 +161,9 @@ export default function SettingsPage() {
       name: nextWorkshop.name,
       phone: nextWorkshop.phone,
       googleMapsLink: enteredMapsUrl || savedMapsUrl,
-      address: nextWorkshop.address,
+      addressEn: nextWorkshop.addressEn,
+      addressAr: nextWorkshop.addressAr,
+      ...descriptions,
       lat: Number(currentLocation?.latitude) || 0,
       lng: Number(currentLocation?.longitude) || 0,
       openingTime: openingHours?.open || '',
@@ -138,7 +173,9 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await saveWorkshopProfile(updates, profileData);
-      reset({ name: '', address: '', phone: '', secondaryPhone: '', googleMapsUrl: '' });
+      // Short fields go back to showing the saved value as a placeholder;
+      // the descriptions keep the saved text.
+      reset({ ...EMPTY_FORM, ...descriptions });
       setLocationError('');
       notify.success('settingsSaved');
     } catch (err) {
@@ -196,12 +233,15 @@ export default function SettingsPage() {
             defaultOpen
           >
             <form onSubmit={submitForm(handleSubmit)} className="space-y-4 p-5">
+              <WorkshopImagePicker imageUrl={data.workshop.imageUrl} onUpload={saveWorkshopImage} />
+
               {/* Fields come from one definition so adding a profile field stays simple. */}
               {PROFILE_FIELDS.map((field) => (
                 <FormHookInput
                   key={field.key}
                   id={`workshop-${field.key}`}
                   type={field.type}
+                  dir={field.dir}
                   label={t(field.translationKey)}
                   placeholder={
                     data.workshop[field.key] ||
@@ -210,6 +250,26 @@ export default function SettingsPage() {
                   register={register}
                   name={field.key}
                 />
+              ))}
+
+              {DESCRIPTION_FIELDS.map((field) => (
+                <div key={field.key}>
+                  <label htmlFor={`workshop-${field.key}`} className="label">
+                    {t(field.translationKey)}
+                  </label>
+                  <textarea
+                    id={`workshop-${field.key}`}
+                    dir={field.dir}
+                    rows={4}
+                    maxLength={DESCRIPTION_MAX_LENGTH}
+                    placeholder={t(`${field.translationKey}Placeholder`)}
+                    className="input min-h-24 resize-y leading-6"
+                    {...register(field.key)}
+                  />
+                  <p className="mt-1 text-end text-xs text-[#5A6968]">
+                    {(watch(field.key) || '').length}/{DESCRIPTION_MAX_LENGTH}
+                  </p>
+                </div>
               ))}
 
               <FormHookInput

@@ -1,35 +1,21 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createWorkshop } from '../API/Auth/Creat';
 import { loginUser } from '../API/Auth/Login';
-import { getTokenExpiresAt, refreshSession } from '../API/client';
+import { persistAuthTokens } from '../API/client';
 import { clearSessionAndReload } from '../utils/clearSession';
 
-// Renew this long before the token expires (tokens last 10 minutes → renewed every ~9).
-const REFRESH_BEFORE_EXPIRY_MS = 60_000;
-// Retry this soon when the server couldn't be reached.
-const RETRY_AFTER_MS = 30_000;
 const AuthContext = createContext(null);
 
 function saveAuthTokens(tokenResponse) {
-  const tokenData = tokenResponse?.data || tokenResponse || {};
-  const accessToken =
-    tokenData.accessToken || tokenData.token || tokenResponse?.accessToken || tokenResponse?.token;
-  const refreshToken = tokenData.refreshToken || tokenResponse?.refreshToken;
+  const tokens = persistAuthTokens(tokenResponse);
 
-  if (accessToken) localStorage.setItem('auth_token', accessToken);
-  if (tokenData.expiresAt) localStorage.setItem('auth_token_expires_at', tokenData.expiresAt);
-
-  // Clear stale refresh credentials if this login response did not issue a new one.
-  if (refreshToken) localStorage.setItem('auth_refresh_token', refreshToken);
-  else localStorage.removeItem('auth_refresh_token');
-
-  if (tokenData.refreshTokenExpiresAt) {
-    localStorage.setItem('auth_refresh_token_expires_at', tokenData.refreshTokenExpiresAt);
-  } else {
+  // A new login without a refresh token must not reuse a previous account's token.
+  if (!tokens.refreshToken) {
+    localStorage.removeItem('auth_refresh_token');
     localStorage.removeItem('auth_refresh_token_expires_at');
   }
 
-  return accessToken;
+  return tokens.accessToken;
 }
 
 export function AuthProvider({ children }) {
@@ -38,13 +24,6 @@ export function AuthProvider({ children }) {
 
   // Restore session on first mount
   useEffect(() => {
-    // An expired or rejected session is cleaned up the same way as a logout.
-    const handleSessionExpired = () => {
-      setUser(null);
-      clearSessionAndReload();
-    };
-    window.addEventListener('auth:session-expired', handleSessionExpired);
-
     try {
       const stored = localStorage.getItem('auth_user');
       if (stored) setUser(JSON.parse(stored));
@@ -53,63 +32,9 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-
-    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
   }, []);
 
   const isDemoMode = () => localStorage.getItem('demo_mode') === 'true';
-
-  // Keep the session alive: renew the token shortly before it expires, instead of
-  // waiting for a request to fail with 401 (that still works as a backup).
-  useEffect(() => {
-    const usesDevToken =
-      import.meta.env.VITE_ENABLE_DEV_AUTH === 'true' && import.meta.env.VITE_DEV_ACCESS_TOKEN;
-    if (!user || isDemoMode() || usesDevToken) return undefined;
-
-    let timer = null;
-
-    const schedule = () => {
-      clearTimeout(timer);
-      if (!localStorage.getItem('auth_refresh_token')) {
-        // Nothing to renew with (the login response had no refresh token).
-        if (import.meta.env.DEV) console.warn('[Auth] no refresh token saved — the timer is off');
-        return;
-      }
-      const expiresAt = getTokenExpiresAt();
-      const delay = expiresAt ? Math.max(expiresAt - Date.now() - REFRESH_BEFORE_EXPIRY_MS, 0) : 0;
-      timer = setTimeout(renew, delay);
-      if (import.meta.env.DEV) {
-        console.log(
-          `%c[Auth] next token refresh at ${new Date(Date.now() + delay).toLocaleTimeString()}`,
-          'color:#0E5C5B;font-weight:bold',
-          { tokenExpiresAt: expiresAt ? new Date(expiresAt).toLocaleTimeString() : 'unknown' }
-        );
-      }
-    };
-
-    const renew = async () => {
-      try {
-        await refreshSession();
-        schedule(); // the new token has a new expiry
-      } catch (error) {
-        const serverUnreachable = Boolean(error?.request) && !error?.response;
-        // Rejected → refreshSession already ended the session. Unreachable → try again soon.
-        if (serverUnreachable) timer = setTimeout(renew, RETRY_AFTER_MS);
-      }
-    };
-
-    // Browsers slow down timers in background tabs, so check again when the tab is shown.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') schedule();
-    };
-
-    schedule();
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearTimeout(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [user?.id]);
 
   const saveUserSession = (userData) => {
     const source = {

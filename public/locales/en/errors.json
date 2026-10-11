@@ -26,6 +26,12 @@
     "invalidDiscount": "The discount must be more than 0% and at most 100%.",
     "create": {
       "server": "The offer couldn't be created right now. Please try again later."
+    },
+    "load": {
+      "server": "Offers couldn't be loaded right now. Please try again later."
+    },
+    "delete": {
+      "server": "The offer couldn't be deleted right now. Please try again later."
     }
   },
   "service": {
@@ -55,6 +61,11 @@
   "settings": {
     "save": {
       "server": "Your changes couldn't be saved right now. Please try again."
+    },
+    "imageType": "Choose a JPG, PNG, or WEBP image.",
+    "imageSize": "The image must be 5 MB or smaller.",
+    "image": {
+      "server": "The image couldn't be uploaded right now. Please try again."
     }
   },
   "notifications": {

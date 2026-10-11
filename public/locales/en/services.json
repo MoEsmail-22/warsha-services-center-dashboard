@@ -93,7 +93,9 @@
       "service": "Service",
       "discountPercentage": "Discount percentage",
       "startAt": "Starts at",
-      "endAt": "Ends at"
+      "endAt": "Ends at",
+      "discount": "Discount",
+      "actions": "Actions"
     },
     "modal": {
       "title": "Add an offer"
@@ -106,11 +108,19 @@
       "endAt": "Ends at"
     },
     "actions": {
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "delete": "Delete offer",
+      "retry": "Try again"
     },
     "noServices": "Add a service first to create an offer.",
     "saving": "Saving…",
-    "emptyDescription": "Create a discount on a service for a set time."
+    "emptyDescription": "Create a discount on a service for a set time.",
+    "delete": {
+      "title": "Delete offer",
+      "confirm": "Delete",
+      "message": "Delete the {{discount}}% offer on {{service}}? Customers will stop seeing it."
+    },
+    "deleting": "Deleting…"
   },
   "emptyDescription": "Add the services you offer so customers can book them.",
   "vehicleCatalog": {

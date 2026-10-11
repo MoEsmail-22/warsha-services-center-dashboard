@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { BadgePercent, Plus } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { BadgePercent, Plus, Trash2 } from 'lucide-react';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotify } from '@/hooks/useNotify';
+import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { loadAllServiceOptions } from '@/contexts/ServicesContext';
 import { PAGE_SIZE_OPTIONS, usePaginationParams } from '@/hooks/usePaginationParams';
 import Pagination from '@/components/widgets/Pagination';
@@ -12,6 +13,7 @@ import {
   Button,
   Card,
   Input,
+  LoadingScreen,
   Modal,
   Select,
   Table,
@@ -21,7 +23,7 @@ import {
   THead,
   TR,
 } from '@/components/ui';
-import { createOffer, toOfferPayload } from '@/API/offersApi';
+import { createOffer, deleteOffer, getOffers } from '@/API/offersApi';
 
 const EMPTY_FORM = {
   serviceId: '',
@@ -29,37 +31,55 @@ const EMPTY_FORM = {
   startAt: '',
   endAt: '',
 };
-const OFFERS_STORAGE_KEY = 'workshop_offers';
 
-function loadOffers(storageKey) {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    return Array.isArray(saved) ? saved.filter((offer) => offer?.id && offer?.startAt) : [];
-  } catch {
-    return [];
-  }
+// Same header style as the Busy Mode table below
+const HEADER_CLASS = 'px-3 py-3 text-start text-xs font-semibold whitespace-nowrap text-[#5A6968]';
+
+/** "7 Oct 2026" on top, "10:00" underneath — keeps the date columns narrow. */
+function formatDate(value, language) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { date: '—', time: '' };
+
+  const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+
+  return {
+    date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date),
+    time: new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(date),
+  };
 }
 
-function formatDate(value, language) {
-  return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-GB', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
+function OfferDate({ value, lang }) {
+  const { date, time } = formatDate(value, lang);
+
+  return (
+    <time dateTime={value} className="flex flex-col gap-0.5">
+      <span className="font-medium text-[#1C1712]">{date}</span>
+      {time && <span className="text-xs text-[#7D7166]">{time}</span>}
+    </time>
+  );
 }
 
 export default function Offers() {
   const { t } = useAppTranslation('services');
   const { isRTL, lang } = useLanguage();
   const { user } = useAuth();
-  // All services for the dropdown; the Services table above only holds one page.
+  const notify = useNotify();
+  const { getErrorMessage } = useErrorMessage();
+  const offerText = (key, defaultValue, options) =>
+    t(`offers.${key}`, { defaultValue, ...options });
+
+  // All services for the dropdown and the Service column; the Services table above only holds one page.
   const [services, setServices] = useState([]);
-  const offerText = (key, defaultValue) => t(`offers.${key}`, { defaultValue });
-  const storageKey = `${OFFERS_STORAGE_KEY}:${user?.id ?? user?.userId ?? 'unknown'}`;
-  const [offers, setOffers] = useState(() => loadOffers(storageKey));
+  const [offers, setOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+
   const [form, setForm] = useState(EMPTY_FORM);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const notify = useNotify();
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // ?offersPage=2&offersSize=20 — prefixed so it doesn't clash with the Services table.
   const { page, pageSize, setPage, setPageSize } = usePaginationParams('offers');
@@ -75,6 +95,23 @@ export default function Offers() {
     form.startAt !== '' &&
     form.endAt !== '' &&
     new Date(form.endAt) > new Date(form.startAt);
+
+  const loadOffers = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      setOffers(await getOffers());
+    } catch (error) {
+      setLoadError(error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) loadOffers();
+  }, [user, loadOffers]);
 
   useEffect(() => {
     // Refresh the options each time the dialog opens, so new services show up.
@@ -94,17 +131,11 @@ export default function Offers() {
     };
   }, [modalOpen, services.length]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(offers));
-    } catch {
-      // Keep the table usable when browser storage is unavailable.
-    }
-  }, [offers, storageKey]);
+  const serviceName = (offer) => {
+    const service = services.find((item) => String(item.id) === String(offer.serviceId));
+    if (service) return service.name[lang] || service.name.en;
 
-  const serviceName = (serviceId) => {
-    const service = services.find((item) => String(item.id) === String(serviceId));
-    return service ? service.name[lang] || service.name.en : `#${serviceId}`;
+    return offer.serviceName[lang] || offer.serviceName.en || `#${offer.serviceId ?? '—'}`;
   };
 
   const updateField = (field, value) => {
@@ -125,19 +156,37 @@ export default function Offers() {
 
     try {
       await createOffer(form);
-
-      // The API has no GET for offers yet, so the table keeps a local copy.
-      setOffers((current) => [
-        ...current,
-        { id: `${Date.now()}-${Math.random()}`, ...toOfferPayload(form) },
-      ]);
       setModalOpen(false);
       setForm(EMPTY_FORM);
       notify.success('offerCreated');
+      // Reload so the new offer shows with its backend ID.
+      await loadOffers();
     } catch (error) {
       notify.error(error, 'offer.create');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+    setDeleteTarget(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
+
+    setDeleting(true);
+
+    try {
+      await deleteOffer(deleteTarget.id);
+      setOffers((current) => current.filter((offer) => offer.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      notify.success('offerDeleted');
+    } catch (error) {
+      notify.error(error, 'offer.delete');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -157,28 +206,40 @@ export default function Offers() {
       </div>
 
       <Card padded={false} className="flex flex-1 flex-col">
-        <div className="flex-1 overflow-x-auto px-4 pb-4">
-          <Table className={offers.length ? 'w-full min-w-[560px]' : 'w-full'}>
+        <div className="flex-1 overflow-x-auto pb-2">
+          <Table className="w-full">
             <THead>
               <TR className="hover:bg-gray-50">
-                <TH className="px-3 py-2.5 whitespace-nowrap">
-                  {offerText('table.service', 'Service')}
-                </TH>
-                <TH className="px-3 py-2.5 whitespace-nowrap">
-                  {offerText('table.discountPercentage', 'Discount percentage')}
-                </TH>
-                <TH className="px-3 py-2.5 whitespace-nowrap">
-                  {offerText('table.startAt', 'Starts at')}
-                </TH>
-                <TH className="px-3 py-2.5 whitespace-nowrap">
-                  {offerText('table.endAt', 'Ends at')}
+                <TH className={HEADER_CLASS}>{offerText('table.service', 'Service')}</TH>
+                <TH className={HEADER_CLASS}>{offerText('table.discount', 'Discount')}</TH>
+                <TH className={HEADER_CLASS}>{offerText('table.startAt', 'Starts at')}</TH>
+                <TH className={HEADER_CLASS}>{offerText('table.endAt', 'Ends at')}</TH>
+                <TH className={`${HEADER_CLASS} text-end`}>
+                  {offerText('table.actions', 'Actions')}
                 </TH>
               </TR>
             </THead>
             <TBody>
-              {offers.length === 0 ? (
+              {loading ? (
                 <TR>
-                  <TD colSpan={4}>
+                  <TD colSpan={5}>
+                    <LoadingScreen variant="section" />
+                  </TD>
+                </TR>
+              ) : loadError ? (
+                <TR>
+                  <TD colSpan={5} className="py-10 text-center">
+                    <p className="text-sm text-red-600">
+                      {getErrorMessage(loadError, 'offer.load')}
+                    </p>
+                    <Button variant="outline" size="sm" className="mt-3" onClick={loadOffers}>
+                      {offerText('actions.retry', 'Try again')}
+                    </Button>
+                  </TD>
+                </TR>
+              ) : offers.length === 0 ? (
+                <TR>
+                  <TD colSpan={5}>
                     <EmptyState
                       icon={<BadgePercent />}
                       title={offerText('empty', 'No offers yet.')}
@@ -191,16 +252,32 @@ export default function Offers() {
                 </TR>
               ) : (
                 visibleOffers.map((offer) => (
-                  <TR key={offer.id}>
-                    <TD className="px-3 py-2.5 font-medium whitespace-nowrap">
-                      {serviceName(offer.serviceId)}
+                  <TR key={offer.id} className="transition-colors hover:bg-[#FAF9F6]">
+                    <TD className="min-w-[100px] px-3 py-3 font-semibold text-[#1C1712]">
+                      {serviceName(offer)}
                     </TD>
-                    <TD className="px-3 py-2.5 whitespace-nowrap">{offer.discountPercentage}%</TD>
-                    <TD className="px-3 py-2.5 whitespace-nowrap">
-                      <time dateTime={offer.startAt}>{formatDate(offer.startAt, lang)}</time>
+                    <TD className="px-3 py-3 whitespace-nowrap">
+                      <span className="inline-flex rounded-full bg-[#E8F1EF] px-3 py-1 text-sm font-semibold text-[#0E5C5B]">
+                        {offer.discountPercentage}%
+                      </span>
                     </TD>
-                    <TD className="px-3 py-2.5 whitespace-nowrap">
-                      <time dateTime={offer.endAt}>{formatDate(offer.endAt, lang)}</time>
+                    <TD className="px-3 py-3 whitespace-nowrap">
+                      <OfferDate value={offer.startAt} lang={lang} />
+                    </TD>
+                    <TD className="px-3 py-3 whitespace-nowrap">
+                      <OfferDate value={offer.endAt} lang={lang} />
+                    </TD>
+                    <TD className="px-3 py-3 text-end whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(offer)}
+                        disabled={deleting}
+                        className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label={offerText('actions.delete', 'Delete offer')}
+                        title={offerText('actions.delete', 'Delete offer')}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </TD>
                   </TR>
                 ))
@@ -209,7 +286,7 @@ export default function Offers() {
           </Table>
         </div>
 
-        {offers.length > 0 && (
+        {!loading && offers.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalItems={offers.length}
@@ -290,6 +367,36 @@ export default function Offers() {
             </p>
           )}
         </form>
+      </Modal>
+
+      <Modal
+        open={deleteTarget !== null}
+        onClose={closeDeleteModal}
+        title={offerText('delete.title', 'Delete offer')}
+        size="sm"
+        footer={
+          <>
+            <Button type="button" variant="outline" onClick={closeDeleteModal} disabled={deleting}>
+              {offerText('actions.cancel', 'Cancel')}
+            </Button>
+            <Button type="button" variant="danger" onClick={confirmDelete} disabled={deleting}>
+              {deleting
+                ? offerText('deleting', 'Deleting…')
+                : offerText('delete.confirm', 'Delete')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[#5A6968]">
+          {offerText(
+            'delete.message',
+            'Delete the {{discount}}% offer on {{service}}? Customers will stop seeing it.',
+            {
+              discount: deleteTarget?.discountPercentage,
+              service: deleteTarget ? serviceName(deleteTarget) : '',
+            }
+          )}
+        </p>
       </Modal>
     </section>
   );
