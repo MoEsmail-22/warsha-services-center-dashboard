@@ -93,7 +93,9 @@
       "service": "الخدمة",
       "discountPercentage": "نسبة الخصم",
       "startAt": "يبدأ في",
-      "endAt": "ينتهي في"
+      "endAt": "ينتهي في",
+      "discount": "الخصم",
+      "actions": "الإجراءات"
     },
     "modal": {
       "title": "إضافة عرض"
@@ -106,11 +108,19 @@
       "endAt": "ينتهي في"
     },
     "actions": {
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "delete": "حذف العرض",
+      "retry": "حاول مرة أخرى"
     },
     "noServices": "أضف خدمة أولاً لإنشاء عرض.",
     "saving": "جارٍ الحفظ…",
-    "emptyDescription": "أنشئ خصماً على خدمة لفترة محددة."
+    "emptyDescription": "أنشئ خصماً على خدمة لفترة محددة.",
+    "delete": {
+      "title": "حذف العرض",
+      "confirm": "حذف",
+      "message": "حذف عرض الخصم {{discount}}% على {{service}}؟ لن يظهر للعملاء بعد الآن."
+    },
+    "deleting": "جارٍ الحذف…"
   },
   "emptyDescription": "أضف الخدمات التي تقدمها ليتمكن العملاء من حجزها.",
   "vehicleCatalog": {

@@ -1,6 +1,8 @@
 import axios from 'axios';
 
 const baseURL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '');
+const refreshTokenPath = import.meta.env.VITE_REFRESH_TOKEN_PATH || '/Auth/client/refresh-token';
+const REFRESH_INTERVAL_MS = 8 * 60 * 1000;
 
 const apiClient = axios.create({
   baseURL,
@@ -12,24 +14,41 @@ const apiClient = axios.create({
 
 let refreshPromise = null;
 
-/** Development only: shows token refreshes in the console (token values shortened). */
-function logRefresh(message, details) {
-  if (!import.meta.env.DEV) return;
-  console.log(`%c[Auth] ${message}`, 'color:#0E5C5B;font-weight:bold', details ?? '');
+const getTokenValue = (payload, keys) => {
+  const sources = [payload?.data?.tokens, payload?.data, payload?.tokens, payload];
+
+  for (const source of sources) {
+    for (const key of keys) {
+      if (typeof source?.[key] === 'string' && source[key]) return source[key];
+    }
+  }
+
+  return null;
+};
+
+function getTokenData(payload) {
+  return payload?.data?.tokens || payload?.data || payload?.tokens || payload || {};
 }
 
-const shortToken = (value) =>
-  typeof value === 'string' && value.length > 24
-    ? `${value.slice(0, 12)}…${value.slice(-6)}`
-    : value;
+export function persistAuthTokens(payload) {
+  const accessToken = getTokenValue(payload, ['accessToken', 'access_token', 'token']);
+  const refreshToken = getTokenValue(payload, ['refreshToken', 'refresh_token']);
+  const tokenData = getTokenData(payload);
+  const expiresAt = getTokenValue(payload, ['expiresAt', 'expires_at']);
+  const refreshTokenExpiresAt = getTokenValue(payload, [
+    'refreshTokenExpiresAt',
+    'refresh_token_expires_at',
+  ]);
 
-/** The claims inside a JWT, e.g. { workshopId, role, exp }; null if unreadable. */
-function readTokenClaims(token) {
-  try {
-    return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-  } catch {
-    return null;
+  if (accessToken) localStorage.setItem('auth_token', accessToken);
+  if (refreshToken) localStorage.setItem('auth_refresh_token', refreshToken);
+  if (expiresAt) localStorage.setItem('auth_token_expires_at', expiresAt);
+  else if (accessToken) localStorage.removeItem('auth_token_expires_at');
+  if (refreshTokenExpiresAt) {
+    localStorage.setItem('auth_refresh_token_expires_at', refreshTokenExpiresAt);
   }
+
+  return { accessToken, refreshToken };
 }
 
 function clearSavedSession() {
@@ -46,12 +65,9 @@ function clearSavedSession() {
   }
 }
 
-async function refreshAccessToken() {
-  const refreshToken = localStorage.getItem('auth_refresh_token');
-  if (!refreshToken) throw new Error('No refresh token is available.');
-
+async function refreshAccessToken(refreshToken) {
   const response = await axios.post(
-    `${baseURL}/Auth/client/refresh-token`,
+    `${baseURL}/${refreshTokenPath.replace(/^\//, '')}`,
     { refreshToken },
     {
       headers: {
@@ -60,79 +76,97 @@ async function refreshAccessToken() {
       },
     }
   );
-
   const result = response.data;
-  if (import.meta.env.DEV) {
-    const data = result?.data ?? result;
-    const claims = readTokenClaims(data?.accessToken ?? data?.token);
-    logRefresh(`refresh-token → ${response.status}`, {
-      isSuccess: result?.isSuccess,
-      message: result?.message,
-      accessToken: shortToken(data?.accessToken ?? data?.token),
-      refreshToken: shortToken(data?.refreshToken),
-      // The important part: workshop endpoints need workshopId in the new token.
-      newTokenWorkshopId: claims?.workshopId ?? '❌ MISSING',
-      newTokenExpiresAt: claims?.exp ? new Date(claims.exp * 1000).toLocaleTimeString() : '?',
+
+  if (result?.isSuccess !== true) {
+    throw new Error(result?.message || 'Unable to refresh the session.');
+  }
+
+  const tokens = persistAuthTokens(result);
+  if (!tokens.accessToken) throw new Error('The refresh endpoint returned no access token.');
+
+  return tokens.accessToken;
+}
+
+function getSharedRefreshPromise(refreshToken) {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken(refreshToken).finally(() => {
+      refreshPromise = null;
     });
   }
-  if (result?.isSuccess === false) {
-    throw new Error(result.message || 'Unable to refresh the session.');
-  }
 
-  const tokenData = result?.data || result;
-  const accessToken = tokenData?.accessToken || tokenData?.token;
-  const nextRefreshToken = tokenData?.refreshToken;
-  if (!accessToken) throw new Error('The refresh endpoint returned no access token.');
-
-  localStorage.setItem('auth_token', accessToken);
-  if (nextRefreshToken) localStorage.setItem('auth_refresh_token', nextRefreshToken);
-  if (tokenData.expiresAt) localStorage.setItem('auth_token_expires_at', tokenData.expiresAt);
-  if (tokenData.refreshTokenExpiresAt) {
-    localStorage.setItem('auth_refresh_token_expires_at', tokenData.refreshTokenExpiresAt);
-  }
-
-  return accessToken;
-}
-
-/** When the access token expires (ms since epoch), read from its "exp" claim; null if unknown. */
-export function getTokenExpiresAt(token = localStorage.getItem('auth_token')) {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    return payload.exp ? payload.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Renews the access token. Used by the timer in AuthContext (before the token
- * expires) and by the 401 handler below (backup). Calls made at the same time
- * share one request, so a refresh token is never used twice.
- *
- * If the server rejects the refresh, the session ends (back to login).
- * If the server can't be reached, the session is kept and the error is thrown.
- */
-export function refreshSession() {
-  if (!refreshPromise) {
-    refreshPromise = refreshAccessToken()
-      .catch((error) => {
-        const serverUnreachable = Boolean(error?.request) && !error?.response;
-        if (!serverUnreachable) clearSavedSession();
-        throw error;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
   return refreshPromise;
 }
 
 export const isDemoMode = () =>
   typeof localStorage !== 'undefined' && localStorage.getItem('demo_mode') === 'true';
 
-apiClient.interceptors.request.use((config) => {
-  // Keep demo mode entirely local while returning the same response envelope as the API.
-  if (isDemoMode() && !config.skipDemoMode) {
+function parseExpiry(value) {
+  if (value == null || value === '') return null;
+
+  const numericValue = Number(value);
+  if (Number.isFinite(numericValue) && numericValue > 0) {
+    return numericValue < 1_000_000_000_000 ? numericValue * 1000 : numericValue;
+  }
+
+  const parsedValue = Date.parse(value);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
+}
+
+function getAccessTokenExpiry() {
+  const storedExpiry = parseExpiry(localStorage.getItem('auth_token_expires_at'));
+  if (storedExpiry) return storedExpiry;
+
+  const accessToken = localStorage.getItem('auth_token');
+  const encodedPayload = accessToken?.split('.')[1];
+  if (!encodedPayload) return null;
+
+  try {
+    const base64Payload = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedPayload = base64Payload.padEnd(Math.ceil(base64Payload.length / 4) * 4, '=');
+    const payload = JSON.parse(atob(paddedPayload));
+    return parseExpiry(payload.exp ?? payload.expiresAt);
+  } catch {
+    return null;
+  }
+}
+
+function isAccessTokenExpiring() {
+  const expiresAt = getAccessTokenExpiry();
+  return expiresAt == null || expiresAt <= Date.now() + 60_000;
+}
+
+async function refreshSavedSession(force = false) {
+  if (
+    typeof localStorage === 'undefined' ||
+    isDemoMode() ||
+    (import.meta.env.VITE_ENABLE_DEV_AUTH === 'true' && import.meta.env.VITE_DEV_ACCESS_TOKEN)
+  ) {
+    return;
+  }
+
+  const accessToken = localStorage.getItem('auth_token');
+  const refreshToken = localStorage.getItem('auth_refresh_token');
+  if (!accessToken || !refreshToken || (!force && !isAccessTokenExpiring())) return;
+
+  try {
+    await getSharedRefreshPromise(refreshToken);
+  } catch (error) {
+    console.error('Token refresh failed:', error.response?.data || error.message);
+    clearSavedSession();
+  }
+}
+
+if (typeof window !== 'undefined' && !window.__warshaAuthRefreshTimer) {
+  window.__warshaAuthRefreshTimer = window.setInterval(() => {
+    void refreshSavedSession(true);
+  }, REFRESH_INTERVAL_MS);
+  void refreshSavedSession();
+}
+
+apiClient.interceptors.request.use(async (config) => {
+  // Keep demo mode local while returning the API response envelope.
+  if (isDemoMode()) {
     config.adapter = async (requestConfig) => ({
       data: { isSuccess: true, data: [], message: 'demo' },
       status: 200,
@@ -145,12 +179,25 @@ apiClient.interceptors.request.use((config) => {
   }
 
   const devAuthEnabled = import.meta.env.VITE_ENABLE_DEV_AUTH === 'true';
+  const devToken = devAuthEnabled ? import.meta.env.VITE_DEV_ACCESS_TOKEN : null;
   const token =
-    devAuthEnabled && import.meta.env.VITE_DEV_ACCESS_TOKEN
-      ? import.meta.env.VITE_DEV_ACCESS_TOKEN
-      : typeof localStorage !== 'undefined'
-        ? localStorage.getItem('auth_token')
-        : null;
+    devToken ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null);
+
+  if (!devToken && token && typeof localStorage !== 'undefined') {
+    const refreshToken = localStorage.getItem('auth_refresh_token');
+    if (refreshToken && isAccessTokenExpiring()) {
+      try {
+        const refreshedToken = await getSharedRefreshPromise(refreshToken);
+        config.headers.Authorization = `Bearer ${refreshedToken}`;
+        return config;
+      } catch (error) {
+        console.error('Pre-request token refresh failed:', error.response?.data || error.message);
+        clearSavedSession();
+        return Promise.reject(error);
+      }
+    }
+  }
 
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -160,16 +207,23 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    // Login, register, reset and refresh requests answer for themselves; a 401 there is not an expired session.
-    const isRefreshRequest = originalRequest?.url?.includes('/Auth/');
+    const isRefreshRequest = originalRequest?.url?.includes('/Auth/client/refresh-token');
+    const devAuthEnabled = import.meta.env.VITE_ENABLE_DEV_AUTH === 'true';
+    const responseMessage =
+      error.response?.data?.message ||
+      error.response?.data?.title ||
+      error.response?.data?.detail ||
+      (typeof error.response?.data === 'string' ? error.response.data : '');
+    const isBackendExpiredToken400 =
+      error.response?.status === 400 && /nullable object must have a value/i.test(responseMessage);
 
     if (
-      error.response?.status !== 401 ||
+      (error.response?.status !== 401 && !isBackendExpiredToken400) ||
       !originalRequest ||
       originalRequest._retry ||
       isRefreshRequest ||
       isDemoMode() ||
-      (import.meta.env.VITE_ENABLE_DEV_AUTH === 'true' && import.meta.env.VITE_DEV_ACCESS_TOKEN)
+      (devAuthEnabled && import.meta.env.VITE_DEV_ACCESS_TOKEN)
     ) {
       return Promise.reject(error);
     }
@@ -183,12 +237,13 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
 
     try {
-      // Backup for the timer in AuthContext: renew now and retry this request once.
-      logRefresh(`401 on ${originalRequest.url} → refreshing now (backup)`);
-      const accessToken = await refreshSession();
+      const accessToken = await getSharedRefreshPromise(refreshToken);
+      originalRequest.headers = originalRequest.headers || {};
       originalRequest.headers.Authorization = `Bearer ${accessToken}`;
       return apiClient(originalRequest);
     } catch (refreshError) {
+      console.error('Token refresh failed:', refreshError);
+      clearSavedSession();
       return Promise.reject(refreshError);
     }
   }

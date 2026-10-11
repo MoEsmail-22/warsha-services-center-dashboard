@@ -5,8 +5,6 @@
   "workshopName": "Workshop name",
   "address": "Address",
   "phone": "Phone",
-  "secondaryPhone": "Secondary phone ",
-  "secondaryPhonePlaceholder": "Add a second phone number",
   "workshopLocation": "Workshop location",
   "workshopLocationDescription": "Choose the exact workshop location on the map.",
   "setLocation": "Set location",
@@ -64,6 +62,16 @@
   "acceptOnlineBookings": "Accept online bookings",
   "showPrices": "Show prices to customers",
   "autoSendUpdates": "Auto-send service updates",
-  "emailDailySummary": "Email daily summary",
-  "loadError": "Unable to load settings"
+  "loadError": "Unable to load settings",
+  "addressEn": "Address (English)",
+  "addressAr": "Address (Arabic)",
+  "descriptionEn": "About the workshop (English)",
+  "descriptionAr": "About the workshop (Arabic)",
+  "descriptionEnPlaceholder": "Tell customers about your workshop, experience, and specialties.",
+  "descriptionArPlaceholder": "عرّف العملاء بورشتك وخبرتك وتخصصاتك.",
+  "workshopImage": "Workshop image",
+  "uploadImage": "Upload image",
+  "changeImage": "Change image",
+  "uploadingImage": "Uploading…",
+  "imageHint": "JPG, PNG, or WEBP, up to {{size}} MB."
 }

@@ -89,14 +89,43 @@ export async function removeService(id) {
   }
 }
 
-export async function updateProfile(id, profileData) {
+export async function getProfile() {
   try {
-    const response = await apiClient.post(`/Workshop/update-profile/${id}`, profileData);
+    const response = await apiClient.get('/Workshop/profile');
+    logResponse('Services API', 'GET profile', response);
+    return assertApiSuccess(response.data, 'Failed to load profile.');
+  } catch (error) {
+    logError('Services API', 'GET profile', error);
+    return handleApiError(error, 'Load profile');
+  }
+}
+
+/** profileData: { name, phone, googleMapsLink, addressEn, addressAr, descriptionEn, descriptionAr, lat, lng, openingTime, closingTime } */
+export async function updateProfile(profileData) {
+  try {
+    const response = await apiClient.post('/Workshop/update-profile', profileData);
     logResponse('Services API', 'POST update profile', response);
     return assertApiSuccess(response.data, 'Failed to update profile.');
   } catch (error) {
     logError('Services API', 'POST update profile', error);
     return handleApiError(error, 'Update profile');
+  }
+}
+
+export async function uploadWorkshopImage(file) {
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    // Let the browser set multipart/form-data with its boundary.
+    const response = await apiClient.put('/Workshop/image', formData, {
+      headers: { 'Content-Type': undefined },
+    });
+    logResponse('Services API', 'PUT workshop image', response);
+    return assertApiSuccess(response.data, 'Failed to upload image.');
+  } catch (error) {
+    logError('Services API', 'PUT workshop image', error);
+    return handleApiError(error, 'Upload workshop image');
   }
 }
 

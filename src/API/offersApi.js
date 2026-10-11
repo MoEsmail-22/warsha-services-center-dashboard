@@ -37,6 +37,42 @@ export function toOfferPayload({ serviceId, discountPercentage, startAt, endAt }
   };
 }
 
+/** One backend offer → { id, serviceId, serviceName, discountPercentage, startAt, endAt }. */
+function normalizeOffer(offer) {
+  return {
+    id: offer.id ?? offer.offerId,
+    serviceId: offer.serviceId ?? offer.workshopServiceId ?? offer.service?.id ?? null,
+    serviceName: {
+      en: offer.serviceNameEn ?? offer.service?.nameEn ?? offer.serviceName ?? '',
+      ar: offer.serviceNameAr ?? offer.service?.nameAr ?? offer.serviceName ?? '',
+    },
+    discountPercentage: Number(offer.discountPercentage ?? offer.discount ?? 0),
+    startAt: offer.startAt ?? offer.startDate,
+    endAt: offer.endAt ?? offer.endDate,
+  };
+}
+
+export async function getOffers() {
+  try {
+    const response = await apiClient.get('/Workshop/offers');
+    const result = assertApiSuccess(response.data, 'Failed to load offers.');
+    // The list may come as data: [...] or data: { items: [...] }
+    const rows = [result?.data, result?.data?.items, result?.items, result].find(Array.isArray);
+    return (rows ?? []).map(normalizeOffer);
+  } catch (error) {
+    return handleApiError(error, 'Load offers');
+  }
+}
+
+export async function deleteOffer(offerId) {
+  try {
+    const response = await apiClient.delete(`/Workshop/offers/${offerId}`);
+    return assertApiSuccess(response.data, 'Failed to delete offer.');
+  } catch (error) {
+    return handleApiError(error, 'Delete offer');
+  }
+}
+
 export async function createOffer(form) {
   try {
     const response = await apiClient.post('/Workshop/offer', toOfferPayload(form));

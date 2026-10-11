@@ -129,7 +129,9 @@
     "bookingCancelled": "Booking cancelled",
     "bookingStatusChanged": "Booking status updated",
     "quoteSent": "Quote sent to the customer",
-    "voucherRedeemed": "Voucher redeemed"
+    "voucherRedeemed": "Voucher redeemed",
+    "offerDeleted": "Offer deleted",
+    "imageUploaded": "Workshop image updated"
   },
   "notificationsPanel": {
     "title": "Notifications",

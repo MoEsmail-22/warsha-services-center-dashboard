@@ -7,7 +7,7 @@
  *   { data, loading, error, updateWorkshop, updatePreferences, togglePreference }
  */
 import { createContext, useContext, useReducer, useEffect, useRef } from 'react';
-import { updateProfile, updateSettings } from '@/API/Service';
+import { getProfile, updateProfile, updateSettings, uploadWorkshopImage } from '@/API/Service';
 import { isDemoMode } from '@/API/client';
 import { useAuth } from './AuthContext';
 
@@ -26,6 +26,68 @@ export function toApiTime(value) {
   return `${String(hours12).padStart(2, '0')}:${match[2]} ${period}`;
 }
 
+/** "09:30 PM" (API) → "21:30" (working-hours editor). Already 24-hour values pass through. */
+export function fromApiTime(value) {
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i.exec((value || '').trim());
+  if (!match) return '';
+  let hours = Number(match[1]);
+  const period = match[3]?.toUpperCase();
+  if (period === 'PM' && hours < 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return `${String(hours).padStart(2, '0')}:${match[2]}`;
+}
+
+/** Returns the URL whether the API sends a string or { imageUrl } / { url }. */
+function readImageUrl(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value.imageUrl ?? value.image ?? value.url ?? value.profileImage ?? value.logo ?? '';
+}
+
+/** GET /Workshop/profile → the workshop fields the Settings page uses. Missing values are left out. */
+function profileToWorkshop(profile, currentWorkingHours) {
+  if (!profile || typeof profile !== 'object') return {};
+
+  const lat = Number(profile.lat ?? profile.latitude);
+  const lng = Number(profile.lng ?? profile.longitude);
+  const hasPin = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0);
+  const googleMapsUrl = profile.googleMapsLink ?? profile.googleMapsUrl ?? '';
+
+  const values = {
+    name: profile.name,
+    phone: profile.phone ?? profile.phoneNumber,
+    addressEn: profile.addressEn ?? profile.address,
+    addressAr: profile.addressAr,
+    descriptionEn: profile.descriptionEn,
+    descriptionAr: profile.descriptionAr,
+    imageUrl: readImageUrl(
+      profile.imageUrl ?? profile.image ?? profile.profileImage ?? profile.logo
+    ),
+    location:
+      hasPin || googleMapsUrl
+        ? { ...(hasPin ? { latitude: lat, longitude: lng } : {}), googleMapsUrl }
+        : undefined,
+  };
+
+  // The API has one opening/closing time; use it for open days that have no hours yet.
+  const open = fromApiTime(profile.openingTime);
+  const close = fromApiTime(profile.closingTime);
+  if (open && close && currentWorkingHours) {
+    values.workingHours = Object.fromEntries(
+      Object.entries(currentWorkingHours).map(([day, hours]) => [
+        day,
+        hours.enabled && !hours.open && !hours.close ? { ...hours, open, close } : hours,
+      ])
+    );
+  }
+
+  return Object.fromEntries(
+    Object.entries(values).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ''
+    )
+  );
+}
+
 const SETTINGS_STORAGE_KEY = 'workshop_settings';
 
 const EMPTY_DAY = { enabled: true, open: '', close: '' };
@@ -37,9 +99,12 @@ const EMPTY_DAY = { enabled: true, open: '', close: '' };
 const DEFAULT_SETTINGS = {
   workshop: {
     name: '',
-    address: '',
+    addressEn: '',
+    addressAr: '',
     phone: '',
-    secondaryPhone: '',
+    descriptionEn: '',
+    descriptionAr: '',
+    imageUrl: '',
     location: null,
     workingHours: {
       saturday: EMPTY_DAY,
@@ -55,7 +120,6 @@ const DEFAULT_SETTINGS = {
     acceptOnlineBookings: false,
     showPrices: false,
     autoSendServiceUpdates: false,
-    emailDailySummary: false,
   },
 };
 
@@ -70,7 +134,8 @@ function buildSettings(saved, user) {
       ...workshop,
       name: workshop.name || user?.name || '',
       phone: workshop.phone || user?.phone || '',
-      address: workshop.address || user?.address || '',
+      // Older saved settings had one "address" field.
+      addressEn: workshop.addressEn || workshop.address || user?.address || '',
     },
     preferences: { ...DEFAULT_SETTINGS.preferences, ...saved?.preferences },
   };
@@ -95,6 +160,18 @@ function reducer(state, action) {
       return {
         ...state,
         data: { ...state.data, workshop: { ...state.data.workshop, ...action.payload } },
+      };
+    case 'MERGE_PROFILE':
+      if (!state.data || state.ownerKey !== action.ownerKey) return state;
+      return {
+        ...state,
+        data: {
+          ...state.data,
+          workshop: {
+            ...state.data.workshop,
+            ...profileToWorkshop(action.payload, state.data.workshop.workingHours),
+          },
+        },
       };
     case 'UPDATE_PREFERENCES':
       return {
@@ -147,51 +224,90 @@ export function SettingsProvider({ children }) {
       });
     } catch (err) {
       dispatch({ type: 'LOAD_ERROR', payload: err.message });
+      return;
     }
+
+    if (isDemoMode()) return;
+
+    // The saved copy shows instantly; the backend profile then fills in the real values.
+    let cancelled = false;
+    getProfile()
+      .then((result) => {
+        if (!cancelled) {
+          dispatch({
+            type: 'MERGE_PROFILE',
+            payload: result?.data ?? result,
+            ownerKey: storageKey,
+          });
+        }
+      })
+      .catch((err) => console.error('Could not load workshop profile:', err.details ?? err));
+
+    return () => {
+      cancelled = true;
+    };
   }, [storageKey]);
 
   useEffect(() => {
     // Only write data that was loaded for the current account.
     if (state.data && state.ownerKey === storageKey) {
-      localStorage.setItem(storageKey, JSON.stringify(state.data));
+      const { imageUrl } = state.data.workshop;
+      // A blob: preview URL dies on reload, so don't keep it.
+      const toSave = imageUrl?.startsWith('blob:')
+        ? { ...state.data, workshop: { ...state.data.workshop, imageUrl: '' } }
+        : state.data;
+      localStorage.setItem(storageKey, JSON.stringify(toSave));
     }
   }, [state.data, state.ownerKey, storageKey]);
 
   const updateWorkshop = (updates) => dispatch({ type: 'UPDATE_WORKSHOP', payload: updates });
   const saveWorkshopProfile = async (updates, profileData = updates) => {
-    const storedUser = JSON.parse(localStorage.getItem('auth_user') || 'null');
-    const workshopId = storedUser?.workshopId || storedUser?.userId || storedUser?.id;
-
-    if (!workshopId) throw new Error('Workshop ID is missing from the saved session.');
-
-    const numericWorkshopId = Number(workshopId);
-    const validWorkshopId = Number.isInteger(numericWorkshopId) && numericWorkshopId > 0;
-
-    if (!validWorkshopId && !isDemoMode()) {
-      throw new Error('The saved workshop ID is invalid. Sign in again and retry.');
-    }
-
+    // The backend reads the workshop from the token, so no ID is sent.
     const requestBody = {
-      workshopId: validWorkshopId ? numericWorkshopId : 0,
       name: profileData.name || '',
       phone: profileData.phone || '',
       googleMapsLink: profileData.googleMapsLink || '',
-      address: profileData.address || '',
+      addressEn: profileData.addressEn || '',
+      addressAr: profileData.addressAr || '',
+      descriptionEn: profileData.descriptionEn || '',
+      descriptionAr: profileData.descriptionAr || '',
       lat: Number(profileData.lat) || 0,
       lng: Number(profileData.lng) || 0,
       openingTime: toApiTime(profileData.openingTime),
       closingTime: toApiTime(profileData.closingTime),
     };
 
-    const result = await updateProfile(
-      validWorkshopId ? numericWorkshopId : workshopId,
-      requestBody
-    );
+    const result = await updateProfile(requestBody);
     dispatch({ type: 'UPDATE_WORKSHOP', payload: updates });
     // Keep the Topbar name in sync with the saved workshop name.
     if (updates.name && updates.name !== user?.name) updateUser({ name: updates.name });
+
+    // Reload what the backend actually saved. The save already worked, so a
+    // failed reload only gets logged instead of showing an error.
+    if (!isDemoMode()) {
+      try {
+        const profile = await getProfile();
+        dispatch({
+          type: 'MERGE_PROFILE',
+          payload: profile?.data ?? profile,
+          ownerKey: storageKey,
+        });
+      } catch (err) {
+        console.error('Could not reload workshop profile:', err.details ?? err);
+      }
+    }
+
     return result;
   };
+  /** Uploads the workshop image and returns the URL to show. */
+  const saveWorkshopImage = async (file) => {
+    const result = await uploadWorkshopImage(file);
+    // Use the backend URL when it sends one; otherwise show the picked file.
+    const imageUrl = readImageUrl(result?.data) || URL.createObjectURL(file);
+    dispatch({ type: 'UPDATE_WORKSHOP', payload: { imageUrl } });
+    return imageUrl;
+  };
+
   const savePreferences = async (preferences) => {
     const storedUser = JSON.parse(localStorage.getItem('auth_user') || 'null');
     const workshopId = storedUser?.userId || storedUser?.id;
@@ -204,7 +320,6 @@ export function SettingsProvider({ children }) {
       acceptOnlineBookings: Boolean(preferences.acceptOnlineBookings),
       showPricesToCustomers: Boolean(preferences.showPrices),
       autoSendUpdates: Boolean(preferences.autoSendServiceUpdates),
-      emailDailySummary: Boolean(preferences.emailDailySummary),
     };
 
     dispatch({ type: 'UPDATE_PREFERENCES', payload: preferences });
@@ -227,6 +342,7 @@ export function SettingsProvider({ children }) {
     ...state,
     updateWorkshop,
     saveWorkshopProfile,
+    saveWorkshopImage,
     savePreferences,
     updatePreferences,
     togglePreference,

@@ -136,7 +136,9 @@
     "bookingCancelled": "تم إلغاء الحجز",
     "bookingStatusChanged": "تم تحديث حالة الحجز",
     "quoteSent": "تم إرسال عرض السعر للعميل",
-    "voucherRedeemed": "تم استخدام القسيمة"
+    "voucherRedeemed": "تم استخدام القسيمة",
+    "offerDeleted": "تم حذف العرض",
+    "imageUploaded": "تم تحديث صورة الورشة"
   },
   "notificationsPanel": {
     "title": "الإشعارات",
