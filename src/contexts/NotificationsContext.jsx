@@ -2,8 +2,9 @@
  * NotificationsContext — the workshop's notifications for the Topbar bell.
  *
  * Loads only while someone is signed in (never on the login page), checks for
- * new ones every minute, and marks items as read right away on screen,
- * undoing that if the API call fails.
+ * new ones every POLLING.notifications.intervalMs, and marks items as read right away
+ * on screen, undoing that if the API call fails. New ones show as a toast, or as a
+ * desktop notification when the tab is in the background and the user allowed them.
  *
  * Exposes:
  *   { items, unreadCount, loading, error, hasMore, refresh, loadMore, markAsRead, markAllAsRead }
@@ -15,6 +16,8 @@ import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { useTranslation } from 'react-i18next';
 import { usePolling } from '@/hooks/usePolling';
+import { useBrowserNotificationPermission } from '@/hooks/useBrowserNotificationPermission';
+import { notifyInBackground } from '@/utils/browserNotifications';
 import { POLLING } from '@/constants/polling';
 
 const NotificationsContext = createContext(null);
@@ -73,20 +76,30 @@ export function NotificationsProvider({ children }) {
     const lang = i18n.language?.startsWith('ar') ? 'ar' : 'en';
     if (seenIds.current) {
       const fresh = items.filter((item) => !item.isRead && !seenIds.current.has(item.id));
+      // Tab in the background → desktop notification; otherwise (or if that fails) the toast.
       if (fresh.length === 1) {
         const [item] = fresh;
-        showToast('notification', item.message[lang] || item.message.en || item.title[lang], {
-          title:
-            item.message[lang] || item.message.en ? item.title[lang] || item.title.en : undefined,
+        const message = item.message[lang] || item.message.en;
+        const title = item.title[lang] || item.title.en;
+        const shown = notifyInBackground({
+          tag: `notification-${item.id}`,
+          title: title || t('notificationsPanel.title', { defaultValue: 'Notifications' }),
+          body: message,
         });
+        if (!shown) {
+          showToast('notification', message || title, { title: message ? title : undefined });
+        }
       } else if (fresh.length > 1) {
-        showToast(
-          'notification',
-          t('notificationsPanel.newCount', {
-            count: fresh.length,
-            defaultValue: `You have ${fresh.length} new notifications`,
-          })
-        );
+        const summary = t('notificationsPanel.newCount', {
+          count: fresh.length,
+          defaultValue: `You have ${fresh.length} new notifications`,
+        });
+        const shown = notifyInBackground({
+          tag: `notifications-${fresh.map((item) => item.id).join('-')}`,
+          title: t('brand.name', { ns: 'nav', defaultValue: 'Warsha' }),
+          body: summary,
+        });
+        if (!shown) showToast('notification', summary);
       }
     }
     seenIds.current = new Set([...(seenIds.current ?? []), ...items.map((item) => item.id)]);
@@ -149,11 +162,13 @@ export function NotificationsProvider({ children }) {
     return undefined;
   }, [enabled, user?.id, refresh]);
 
+  // With desktop notifications allowed, keep checking while the tab is in the background.
+  const { permission } = useBrowserNotificationPermission();
   usePolling(
     async () => {
       if (!(await refresh())) throw new Error('Notifications check failed');
     },
-    { ...POLLING.notifications, enabled }
+    { ...POLLING.notifications, enabled, runWhenHidden: permission === 'granted' }
   );
 
   const setReadState = (ids, isRead) =>

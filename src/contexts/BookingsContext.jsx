@@ -30,6 +30,8 @@ import { normalizeBooking } from '@/utils/normalizeBooking';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { usePolling } from '@/hooks/usePolling';
+import { useBrowserNotificationPermission } from '@/hooks/useBrowserNotificationPermission';
+import { notifyInBackground } from '@/utils/browserNotifications';
 import { POLLING } from '@/constants/polling';
 
 const BookingsContext = createContext(null);
@@ -76,16 +78,27 @@ export function BookingsProvider({ children }) {
         if (requestId !== latestRequest.current) return true;
 
         if (knownIds.current) {
-          const newCount = next.filter((booking) => !knownIds.current.has(booking.id)).length;
-          if (newCount > 0) {
-            showToast(
-              'success',
-              t('notifications.newBookings', {
-                count: newCount,
-                defaultValue:
-                  newCount === 1 ? 'New booking request' : `${newCount} new booking requests`,
-              })
-            );
+          const fresh = next.filter((booking) => !knownIds.current.has(booking.id));
+          if (fresh.length > 0) {
+            const message = t('notifications.newBookings', {
+              count: fresh.length,
+              defaultValue:
+                fresh.length === 1 ? 'New booking request' : `${fresh.length} new booking requests`,
+            });
+            // Tab in the background → desktop notification; otherwise (or if that fails) the toast.
+            const shown = notifyInBackground({
+              tag: `bookings-${fresh.map((booking) => booking.id).join('-')}`,
+              title: message,
+              body: fresh
+                .map((booking) =>
+                  [booking.number, booking.vehicle !== '—' && booking.vehicle]
+                    .filter(Boolean)
+                    .join(' · ')
+                )
+                .filter(Boolean)
+                .join('\n'),
+            });
+            if (!shown) showToast('success', message);
           }
         }
         knownIds.current = new Set(next.map((booking) => booking.id));
@@ -117,11 +130,13 @@ export function BookingsProvider({ children }) {
   }, [enabled, user?.id, refresh]);
 
   // Background checks: every 30 s while visible, slower after errors, never overlapping.
+  // With desktop notifications allowed, keep checking while the tab is in the background.
+  const { permission } = useBrowserNotificationPermission();
   usePolling(
     async () => {
       if (!(await refresh({ silent: true }))) throw new Error('Bookings check failed');
     },
-    { ...POLLING.bookings, enabled }
+    { ...POLLING.bookings, enabled, runWhenHidden: permission === 'granted' }
   );
 
   /** Local-only change, used by the Jobs board workflow (it has its own step names). */

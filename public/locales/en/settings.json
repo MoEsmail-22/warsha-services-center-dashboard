@@ -17,12 +17,10 @@
   "latitude": "Latitude",
   "longitude": "Longitude",
   "mapLoading": "Loading map...",
-  "mapTilerKeyMissing": "Add your MapTiler key to enable the Google-like Streets layer. The basic map is shown for now.",
   "searchLocation": "Search for a location",
   "searchLocationPlaceholder": "Search an address, place, or business",
   "searchingLocation": "Searching locations",
   "clearLocationSearch": "Clear location search",
-  "locationSearchUnavailable": "Location search needs a MapTiler API key.",
   "locationSearchError": "We could not search for that location. Try again.",
   "googleMapsUrl": "Google Maps link",
   "googleMapsUrlPlaceholder": "Paste your Google Maps share link",
@@ -73,5 +71,7 @@
   "uploadImage": "Upload image",
   "changeImage": "Change image",
   "uploadingImage": "Uploading…",
-  "imageHint": "JPG, PNG, or WEBP, up to {{size}} MB."
+  "imageHint": "JPG, PNG, or WEBP, up to {{size}} MB.",
+  "searchLocationButton": "Search",
+  "locationSearchNoResults": "No places found. Try another name or a nearby street."
 }

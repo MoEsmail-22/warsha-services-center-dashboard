@@ -3,13 +3,18 @@ import { useEffect, useRef } from 'react';
 /**
  * Runs `task` every `intervalMs` while `enabled`, with three safeguards:
  *   1. Pauses while the tab is hidden, and runs right away when it's shown again.
+ *      `runWhenHidden: true` keeps it going in the background (for desktop notifications;
+ *      browsers may slow background timers to about once a minute).
  *   2. Never starts a new run while the previous one is still waiting.
  *   3. Slows down after failures (×2 each time, up to `maxIntervalMs`) and goes
  *      back to normal after the next success.
  *
  * `task` must return a promise that rejects when the request fails.
  */
-export function usePolling(task, { intervalMs, maxIntervalMs = intervalMs * 4, enabled = true }) {
+export function usePolling(
+  task,
+  { intervalMs, maxIntervalMs = intervalMs * 4, enabled = true, runWhenHidden = false }
+) {
   // Always call the latest task without restarting the timer when it changes.
   const taskRef = useRef(task);
   taskRef.current = task;
@@ -28,7 +33,7 @@ export function usePolling(task, { intervalMs, maxIntervalMs = intervalMs * 4, e
     };
 
     const run = async () => {
-      if (running || document.visibilityState !== 'visible') return schedule();
+      if (running || (!runWhenHidden && document.visibilityState !== 'visible')) return schedule();
       running = true;
       try {
         await taskRef.current();
@@ -52,7 +57,7 @@ export function usePolling(task, { intervalMs, maxIntervalMs = intervalMs * 4, e
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [enabled, intervalMs, maxIntervalMs]);
+  }, [enabled, intervalMs, maxIntervalMs, runWhenHidden]);
 }
 
 export default usePolling;

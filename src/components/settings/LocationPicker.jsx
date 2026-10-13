@@ -39,7 +39,8 @@ export default function LocationPicker({ value, onChange }) {
 
     setLocationError('');
     navigator.geolocation.getCurrentPosition(
-      ({ coords }) => setPosition({ lat: coords.latitude, lng: coords.longitude }),
+      // zoom 17: close enough to see the nearby streets and places.
+      ({ coords }) => setPosition({ lat: coords.latitude, lng: coords.longitude, zoom: 17 }),
       () => setLocationError(t('locationPermissionError')),
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -115,11 +116,7 @@ export default function LocationPicker({ value, onChange }) {
             </div>
           }
         >
-          <LeafletLocationMap
-            position={position}
-            onPositionChange={setPosition}
-            missingLayerMessage={t('mapTilerKeyMissing')}
-          />
+          <LeafletLocationMap position={position} onPositionChange={setPosition} />
         </Suspense>
 
         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">

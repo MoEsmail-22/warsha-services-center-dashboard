@@ -138,7 +138,10 @@
     "quoteSent": "تم إرسال عرض السعر للعميل",
     "voucherRedeemed": "تم استخدام القسيمة",
     "offerDeleted": "تم حذف العرض",
-    "imageUploaded": "تم تحديث صورة الورشة"
+    "imageUploaded": "تم تحديث صورة الورشة",
+    "carBrandAdded": "تمت إضافة ماركة السيارة",
+    "carBrandRemoved": "تم حذف ماركة السيارة",
+    "desktopNotificationsOn": "تم تفعيل إشعارات سطح المكتب"
   },
   "notificationsPanel": {
     "title": "الإشعارات",
@@ -152,7 +155,12 @@
     "newCount_two": "لديك إشعاران جديدان",
     "newCount_few": "لديك {{count}} إشعارات جديدة",
     "newCount_many": "لديك {{count}} إشعاراً جديداً",
-    "newCount_other": "لديك {{count}} إشعار جديد"
+    "newCount_other": "لديك {{count}} إشعار جديد",
+    "desktop": {
+      "enable": "تفعيل إشعارات سطح المكتب",
+      "enableHint": "تلقَّ تنبيهات بالحجوزات والإشعارات الجديدة أثناء وجود هذه الصفحة في الخلفية.",
+      "blocked": "إشعارات سطح المكتب محظورة. للسماح بها، اضغط على أيقونة القفل بجوار شريط العنوان."
+    }
   },
   "toast": {
     "success": "تم بنجاح",

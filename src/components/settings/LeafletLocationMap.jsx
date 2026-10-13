@@ -3,7 +3,27 @@ import L from 'leaflet';
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const MAPTILER_API_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
+const GEOAPIFY_API_KEY = import.meta.env.VITE_GEOAPIFY_API_KEY;
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
+
+/**
+ * With a Geoapify key: their "OSM Bright" map (cleaner, Google-like), sharp on retina
+ * screens ({r} becomes "@2x"). Without one: OpenStreetMap's free tiles.
+ * Both show shops, workshops and other places from about zoom 17.
+ */
+const TILES = GEOAPIFY_API_KEY
+  ? {
+      url: `https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}{r}.png?apiKey=${GEOAPIFY_API_KEY}`,
+      attribution: `Powered by <a href="https://www.geoapify.com/">Geoapify</a> | &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> ${OSM_ATTRIBUTION}`,
+      maxZoom: 20,
+    }
+  : {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: OSM_ATTRIBUTION,
+      // OpenStreetMap has no tiles past zoom 19; going further shows a gray map.
+      maxZoom: 19,
+    };
 
 const markerIcon = L.divIcon({
   className: '',
@@ -39,11 +59,12 @@ function MapResizeWatcher() {
   return null;
 }
 
+/** Moves the map to the pin. A position with `zoom` (a search result) also zooms in. */
 function MapViewUpdater({ position }) {
   const map = useMap();
 
   useEffect(() => {
-    map.flyTo(position, map.getZoom());
+    map.flyTo(position, position.zoom ?? map.getZoom());
   }, [map, position]);
 
   return null;
@@ -53,22 +74,9 @@ function MapViewUpdater({ position }) {
  * Leaflet implementation lives in its own lazy-loaded file so its JavaScript,
  * CSS, and map tiles are requested only after the location modal is opened.
  */
-export default function LeafletLocationMap({ position, onPositionChange, missingLayerMessage }) {
-  const tileUrl = MAPTILER_API_KEY
-    ? `https://api.maptiler.com/maps/streets-v4/256/{z}/{x}/{y}.png?key=${MAPTILER_API_KEY}`
-    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-  const attribution = MAPTILER_API_KEY
-    ? '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-    : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
-
+export default function LeafletLocationMap({ position, onPositionChange }) {
   return (
     <div className="relative">
-      {!MAPTILER_API_KEY && missingLayerMessage && (
-        <p className="absolute top-3 right-3 left-12 z-[1000] rounded-lg bg-amber-50/95 px-3 py-2 text-xs font-medium text-amber-800 shadow">
-          {missingLayerMessage}
-        </p>
-      )}
-
       <MapContainer
         center={position}
         zoom={15}
@@ -76,11 +84,10 @@ export default function LeafletLocationMap({ position, onPositionChange, missing
         className="h-[300px] w-full rounded-xl sm:h-[380px]"
       >
         <TileLayer
-          attribution={attribution}
-          url={tileUrl}
+          attribution={TILES.attribution}
+          url={TILES.url}
           minZoom={1}
-          // OpenStreetMap has no tiles past zoom 19; going further shows a gray map.
-          maxZoom={MAPTILER_API_KEY ? 20 : 19}
+          maxZoom={TILES.maxZoom}
           crossOrigin
         />
         <MapResizeWatcher />

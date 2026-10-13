@@ -3,12 +3,13 @@
  * Clicking an unread notification marks it as read.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, BellOff, BellRing, CheckCheck } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useNotify } from '@/hooks/useNotify';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
+import { useBrowserNotificationPermission } from '@/hooks/useBrowserNotificationPermission';
 import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/utils/cn';
 
@@ -50,6 +51,7 @@ export default function NotificationBell() {
     markAsRead,
     markAllAsRead,
   } = useNotifications();
+  const { permission, request: requestPermission } = useBrowserNotificationPermission();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   const text = (key, defaultValue, options) =>
@@ -92,6 +94,11 @@ export default function NotificationBell() {
     }
   };
 
+  // The browser only shows its Allow / Block prompt after a click, so this runs from the button.
+  const enableDesktopNotifications = async () => {
+    if ((await requestPermission()) === 'granted') notify.success('desktopNotificationsOn');
+  };
+
   const badge = unreadCount > 99 ? '99+' : unreadCount;
 
   return (
@@ -126,6 +133,37 @@ export default function NotificationBell() {
               </button>
             )}
           </div>
+
+          {/* Desktop notifications: ask once; explain how to unblock if the user blocked them. */}
+          {permission === 'default' && (
+            <button
+              type="button"
+              onClick={enableDesktopNotifications}
+              className="flex w-full items-start gap-2.5 border-b border-gray-100 bg-[#F2F8F7] px-4 py-2.5 text-start hover:bg-[#E8F1EF]"
+            >
+              <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-[#0E5C5B]" aria-hidden="true" />
+              <span>
+                <span className="block text-xs font-semibold text-[#0E5C5B]">
+                  {text('desktop.enable', 'Turn on desktop notifications')}
+                </span>
+                <span className="block text-xs text-[#5A6968]">
+                  {text(
+                    'desktop.enableHint',
+                    'Get alerts for new bookings and notifications while this tab is in the background.'
+                  )}
+                </span>
+              </span>
+            </button>
+          )}
+          {permission === 'denied' && (
+            <p className="flex items-start gap-2.5 border-b border-gray-100 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
+              <BellOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              {text(
+                'desktop.blocked',
+                'Desktop notifications are blocked. To allow them, click the lock icon next to the address bar.'
+              )}
+            </p>
+          )}
 
           <div className="max-h-[60vh] overflow-y-auto">
             {error && items.length === 0 ? (
