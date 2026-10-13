@@ -17,7 +17,6 @@
   "latitude": "خط العرض",
   "longitude": "خط الطول",
   "mapLoading": "جارٍ تحميل الخريطة...",
-  "mapTilerKeyMissing": "أضف مفتاح MapTiler لتفعيل طبقة الشوارع المشابهة لخرائط Google. تُعرض الخريطة الأساسية حاليًا.",
   "locationUnavailable": "خدمات الموقع غير متاحة على هذا الجهاز.",
   "locationPermissionError": "تعذر الحصول على موقعك. تحقق من إذن المتصفح وحاول مرة أخرى.",
   "locationPreview": "موقع الورشة",
@@ -55,7 +54,6 @@
   "searchLocationPlaceholder": "ابحث عن عنوان أو مكان أو نشاط تجاري",
   "searchingLocation": "جارٍ البحث عن المواقع",
   "clearLocationSearch": "مسح بحث الموقع",
-  "locationSearchUnavailable": "يحتاج بحث الموقع إلى مفتاح MapTiler API.",
   "locationSearchError": "تعذر البحث عن هذا الموقع. حاول مجددًا.",
   "googleMapsUrl": "رابط خرائط Google",
   "googleMapsUrlPlaceholder": "ألصق رابط مشاركة خرائط Google",
@@ -73,5 +71,7 @@
   "uploadImage": "رفع صورة",
   "changeImage": "تغيير الصورة",
   "uploadingImage": "جارٍ الرفع…",
-  "imageHint": "JPG أو PNG أو WEBP، بحد أقصى {{size}} ميجابايت."
+  "imageHint": "JPG أو PNG أو WEBP، بحد أقصى {{size}} ميجابايت.",
+  "searchLocationButton": "بحث",
+  "locationSearchNoResults": "لم يتم العثور على أماكن. جرّب اسمًا آخر أو شارعًا قريبًا."
 }

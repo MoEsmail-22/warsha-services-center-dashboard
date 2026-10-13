@@ -129,12 +129,7 @@
     "addBrand": "Add brand",
     "table": {
       "brand": "Brand",
-      "status": "Status",
       "actions": "Actions"
-    },
-    "status": {
-      "active": "Active",
-      "inactive": "Inactive"
     },
     "modal": {
       "title": "Add a vehicle brand",
@@ -148,9 +143,13 @@
     },
     "actions": {
       "cancel": "Cancel",
-      "deleteBrand": "Delete {{brand}}"
+      "deleteBrand": "Delete {{brand}}",
+      "adding": "Adding…"
     },
     "noBrands": "No brands found.",
-    "emptyDescription": "Add the car brands your workshop services."
+    "emptyDescription": "Add the car brands your workshop services.",
+    "loadingBrands": "Loading brands…",
+    "loadError": "Couldn't load the brand list.",
+    "retry": "Try again"
   }
 }

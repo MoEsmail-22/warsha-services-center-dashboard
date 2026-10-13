@@ -1,37 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Car, Plus, Search, Trash2 } from 'lucide-react';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
+import { useNotify } from '@/hooks/useNotify';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { MARKET_BRANDS } from '@/constants/carBrands';
+import { addWorkshopCarBrand, getCarBrands, removeWorkshopCarBrand } from '@/API/carBrandsApi';
 import { EmptyState } from '@/components/widgets/EmptyState';
-import {
-  Button,
-  Card,
-  Input,
-  Modal,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  Toggle,
-  TR,
-} from '@/components/ui';
+import { Button, Card, Input, Modal, Table, TBody, TD, TH, THead, TR } from '@/components/ui';
+
+const isImageUrl = (value) => typeof value === 'string' && /^(https?:)?\/\//.test(value);
 
 export default function VehicleCatalogDemo() {
   const { t } = useAppTranslation('services');
+  const notify = useNotify();
   const { isRTL } = useLanguage();
   const catalogText = (key, defaultValue, options) =>
     t(`vehicleCatalog.${key}`, { defaultValue, ...options });
-  // No backend endpoint for this yet, so each account's brands are saved in the browser.
-  // Starts empty: no sample brands.
+
+  // The API can add (POST) and remove (DELETE) the workshop's brands, but has no GET for
+  // them yet, so a copy of this account's list is kept in the browser.
   const { user } = useAuth();
   const storageKey = `workshop_vehicle_brands:${user?.id ?? user?.userId ?? 'unknown'}`;
   const [brands, setBrands] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      return Array.isArray(saved) ? saved.filter((item) => item?.id && item?.brand) : [];
+      // Only brands added through the API (numeric catalog id); older browser-only entries are dropped.
+      return Array.isArray(saved)
+        ? saved.filter((item) => Number.isInteger(Number(item?.id)) && item?.name)
+        : [];
     } catch {
       return [];
     }
@@ -44,45 +40,91 @@ export default function VehicleCatalogDemo() {
       // Keep the table usable when browser storage is unavailable.
     }
   }, [brands, storageKey]);
+
+  // The catalog (all brands) is loaded the first time the "Add brand" window opens.
+  const [catalog, setCatalog] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState(false);
   const [marketSearch, setMarketSearch] = useState('');
-  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedBrand, setSelectedBrand] = useState(null);
   const [brandPickerOpen, setBrandPickerOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const loadCatalog = async () => {
+    setCatalogLoading(true);
+    setCatalogError(false);
+    try {
+      setCatalog(await getCarBrands());
+    } catch {
+      setCatalogError(true);
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const openModal = () => {
+    setModalOpen(true);
+    if (catalog.length === 0 && !catalogLoading) loadCatalog();
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedBrand(null);
+    setMarketSearch('');
+    setBrandPickerOpen(false);
+  };
 
   const availableBrands = useMemo(
     () =>
-      MARKET_BRANDS.filter(
+      catalog.filter(
         (brand) =>
-          brand.toLowerCase().includes(marketSearch.toLowerCase()) &&
-          !brands.some((item) => item.brand === brand)
+          brand.name.toLowerCase().includes(marketSearch.toLowerCase()) &&
+          !brands.some((item) => String(item.id) === String(brand.id))
       ),
-    [brands, marketSearch]
+    [catalog, brands, marketSearch]
   );
 
-  const toggleBrand = (id) => {
-    setBrands((current) =>
-      current.map((item) => (item.id === id ? { ...item, active: !item.active } : item))
+  const addBrand = async () => {
+    if (!selectedBrand || saving) return;
+
+    setSaving(true);
+    try {
+      await addWorkshopCarBrand(selectedBrand.id);
+      setBrands((current) => [...current, selectedBrand]);
+      notify.success('carBrandAdded');
+      closeModal();
+    } catch (error) {
+      notify.error(error, 'carBrand.add');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteBrand = async (brand) => {
+    if (deletingId) return;
+
+    setDeletingId(brand.id);
+    try {
+      await removeWorkshopCarBrand(brand.id);
+      setBrands((current) => current.filter((item) => item.id !== brand.id));
+      notify.success('carBrandRemoved');
+    } catch (error) {
+      notify.error(error, 'carBrand.remove');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const brandBadge = (brand) =>
+    isImageUrl(brand.icon) ? (
+      <img src={brand.icon} alt="" className="h-8 w-8 rounded-lg object-contain" />
+    ) : (
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F6F3EE] text-xs font-bold text-[#8A8074]">
+        {brand.name.slice(0, 2).toUpperCase()}
+      </div>
     );
-  };
-
-  const deleteBrand = (id) => setBrands((current) => current.filter((item) => item.id !== id));
-
-  const addBrand = () => {
-    if (!selectedBrand) return;
-
-    setBrands((current) => [
-      ...current,
-      {
-        id: `B-${String(current.length + 1).padStart(3, '0')}`,
-        brand: selectedBrand,
-        active: true,
-      },
-    ]);
-    setSelectedBrand('');
-    setMarketSearch('');
-    setBrandPickerOpen(false);
-    setModalOpen(false);
-  };
 
   return (
     <section className="flex w-full min-w-0 flex-1 flex-col" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -95,7 +137,7 @@ export default function VehicleCatalogDemo() {
             {catalogText('subtitle', 'Manage customer car brands.')}
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="gap-2 self-start sm:self-auto">
+        <Button onClick={openModal} className="gap-2 self-start sm:self-auto">
           <Plus className="h-4 w-4" />
           {catalogText('addBrand', 'Add brand')}
         </Button>
@@ -103,14 +145,11 @@ export default function VehicleCatalogDemo() {
 
       <Card padded={false} className="flex flex-1 flex-col">
         <div className="flex-1 overflow-x-auto px-4 pb-4">
-          <Table className={brands.length ? 'w-full min-w-[520px]' : 'w-full'}>
+          <Table className={brands.length ? 'w-full min-w-[360px]' : 'w-full'}>
             <THead>
               <TR className="hover:bg-gray-50">
                 <TH className="px-3 py-2.5 whitespace-nowrap">
                   {catalogText('table.brand', 'Brand')}
-                </TH>
-                <TH className="px-3 py-2.5 whitespace-nowrap">
-                  {catalogText('table.status', 'Status')}
                 </TH>
                 <TH className="px-3 py-2.5 text-end whitespace-nowrap">
                   {catalogText('table.actions', 'Actions')}
@@ -120,7 +159,7 @@ export default function VehicleCatalogDemo() {
             <TBody>
               {brands.length === 0 ? (
                 <TR>
-                  <TD colSpan={3}>
+                  <TD colSpan={2}>
                     <EmptyState
                       icon={<Car />}
                       title={catalogText('noBrands', 'No brands found.')}
@@ -136,45 +175,21 @@ export default function VehicleCatalogDemo() {
                   <TR key={item.id}>
                     <TD className="px-3 py-2.5 whitespace-nowrap">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F6F3EE] text-xs font-bold text-[#8A8074]">
-                          {item.brand.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-[#1C1712]">{item.brand}</p>
-                          <p className="text-xs text-[#A89A8A]">{item.id}</p>
-                        </div>
-                      </div>
-                    </TD>
-                    <TD className="px-3 py-2.5 whitespace-nowrap">
-                      <div className="flex items-center gap-2.5">
-                        <Toggle
-                          id={`vehicle-brand-${item.id}`}
-                          checked={item.active}
-                          onChange={() => toggleBrand(item.id)}
-                        />
-                        <span
-                          className={
-                            item.active
-                              ? 'text-sm font-medium text-emerald-700'
-                              : 'text-sm font-medium text-gray-500'
-                          }
-                        >
-                          {item.active
-                            ? catalogText('status.active', 'Active')
-                            : catalogText('status.inactive', 'Inactive')}
-                        </span>
+                        {brandBadge(item)}
+                        <p className="font-semibold text-[#1C1712]">{item.name}</p>
                       </div>
                     </TD>
                     <TD className="px-3 py-2.5 text-end whitespace-nowrap">
                       <button
                         type="button"
-                        onClick={() => deleteBrand(item.id)}
-                        className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                        aria-label={catalogText('actions.deleteBrand', `Delete ${item.brand}`, {
-                          brand: item.brand,
+                        onClick={() => deleteBrand(item)}
+                        disabled={deletingId === item.id}
+                        className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        aria-label={catalogText('actions.deleteBrand', `Delete ${item.name}`, {
+                          brand: item.name,
                         })}
-                        title={catalogText('actions.deleteBrand', `Delete ${item.brand}`, {
-                          brand: item.brand,
+                        title={catalogText('actions.deleteBrand', `Delete ${item.name}`, {
+                          brand: item.name,
                         })}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -190,17 +205,19 @@ export default function VehicleCatalogDemo() {
 
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         title={catalogText('modal.title', 'Add a vehicle brand')}
         size="lg"
         contentClassName="min-h-[300px]"
         footer={
           <>
-            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+            <Button type="button" variant="outline" onClick={closeModal}>
               {catalogText('actions.cancel', 'Cancel')}
             </Button>
-            <Button type="button" onClick={addBrand} disabled={!selectedBrand}>
-              {catalogText('addBrand', 'Add brand')}
+            <Button type="button" onClick={addBrand} disabled={!selectedBrand || saving}>
+              {saving
+                ? catalogText('actions.adding', 'Adding…')
+                : catalogText('addBrand', 'Add brand')}
             </Button>
           </>
         }
@@ -227,7 +244,7 @@ export default function VehicleCatalogDemo() {
                 value={marketSearch}
                 onChange={(event) => {
                   setMarketSearch(event.target.value);
-                  setSelectedBrand('');
+                  setSelectedBrand(null);
                   setBrandPickerOpen(true);
                 }}
                 onFocus={() => setBrandPickerOpen(true)}
@@ -249,21 +266,39 @@ export default function VehicleCatalogDemo() {
                 className="absolute inset-x-0 top-full z-10 mt-1 max-h-52 overflow-y-auto rounded-xl border border-[#E8E2D8] bg-white py-1 shadow-lg"
                 role="listbox"
               >
-                {availableBrands.length > 0 ? (
+                {catalogLoading ? (
+                  <p className="px-3 py-3 text-sm text-[#7D7166]">
+                    {catalogText('loadingBrands', 'Loading brands…')}
+                  </p>
+                ) : catalogError ? (
+                  <div className="flex items-center justify-between gap-3 px-3 py-3 text-sm">
+                    <span className="text-red-600">
+                      {catalogText('loadError', "Couldn't load the brand list.")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={loadCatalog}
+                      className="font-semibold text-[#0E5C5B] hover:underline"
+                    >
+                      {catalogText('retry', 'Try again')}
+                    </button>
+                  </div>
+                ) : availableBrands.length > 0 ? (
                   availableBrands.map((brand) => (
                     <button
-                      key={brand}
+                      key={brand.id}
                       type="button"
                       role="option"
-                      aria-selected={selectedBrand === brand}
+                      aria-selected={selectedBrand?.id === brand.id}
                       onClick={() => {
                         setSelectedBrand(brand);
-                        setMarketSearch(brand);
+                        setMarketSearch(brand.name);
                         setBrandPickerOpen(false);
                       }}
-                      className="flex w-full items-center justify-between px-3 py-2.5 text-start text-sm text-[#1C1712] hover:bg-[#F6F3EE]"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-start text-sm text-[#1C1712] hover:bg-[#F6F3EE]"
                     >
-                      <span className="font-medium">{brand}</span>
+                      {brandBadge(brand)}
+                      <span className="font-medium">{brand.name}</span>
                     </button>
                   ))
                 ) : (

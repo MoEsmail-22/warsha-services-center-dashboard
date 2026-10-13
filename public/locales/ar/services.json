@@ -129,12 +129,7 @@
     "addBrand": "إضافة ماركة",
     "table": {
       "brand": "الماركة",
-      "status": "الحالة",
       "actions": "الإجراءات"
-    },
-    "status": {
-      "active": "نشطة",
-      "inactive": "غير نشطة"
     },
     "modal": {
       "title": "إضافة ماركة سيارة",
@@ -148,9 +143,13 @@
     },
     "actions": {
       "cancel": "إلغاء",
-      "deleteBrand": "حذف {{brand}}"
+      "deleteBrand": "حذف {{brand}}",
+      "adding": "جارٍ الإضافة…"
     },
     "noBrands": "لم يتم العثور على ماركات.",
-    "emptyDescription": "أضف ماركات السيارات التي تخدمها ورشتك."
+    "emptyDescription": "أضف ماركات السيارات التي تخدمها ورشتك.",
+    "loadingBrands": "جارٍ تحميل الماركات…",
+    "loadError": "تعذر تحميل قائمة الماركات.",
+    "retry": "حاول مرة أخرى"
   }
 }

@@ -341,7 +341,9 @@ export default function BookingsPage() {
                 paginated.map((booking) => (
                   <tr
                     key={booking.id}
-                    className="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/50"
+                    // Clicking anywhere on the row opens the booking, same as the ⋯ button.
+                    onClick={() => openBooking(booking)}
+                    className="cursor-pointer border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/50"
                   >
                     <td className="px-4 py-3.5 text-sm font-medium whitespace-nowrap text-[#5A6968]">
                       {/* e.g. WRSH-261009-474; the numeric id only if the API sent no number */}
@@ -376,14 +378,21 @@ export default function BookingsPage() {
                         {booking.status === 'pending' && (
                           <button
                             type="button"
-                            onClick={() => setCancelTarget(booking)}
+                            onClick={(event) => {
+                              event.stopPropagation(); // don't also open the booking
+                              setCancelTarget(booking);
+                            }}
                             className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
                           >
                             {t('cancellation.button')}
                           </button>
                         )}
                         <button
-                          onClick={() => openBooking(booking)}
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation(); // the row would open it a second time
+                            openBooking(booking);
+                          }}
                           className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                           aria-label="View details"
                         >

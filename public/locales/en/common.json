@@ -131,7 +131,10 @@
     "quoteSent": "Quote sent to the customer",
     "voucherRedeemed": "Voucher redeemed",
     "offerDeleted": "Offer deleted",
-    "imageUploaded": "Workshop image updated"
+    "imageUploaded": "Workshop image updated",
+    "carBrandAdded": "Car brand added",
+    "carBrandRemoved": "Car brand removed",
+    "desktopNotificationsOn": "Desktop notifications are on"
   },
   "notificationsPanel": {
     "title": "Notifications",
@@ -141,7 +144,12 @@
     "unread": "Unread",
     "loadMore": "Load more",
     "newCount_one": "You have 1 new notification",
-    "newCount_other": "You have {{count}} new notifications"
+    "newCount_other": "You have {{count}} new notifications",
+    "desktop": {
+      "enable": "Turn on desktop notifications",
+      "enableHint": "Get alerts for new bookings and notifications while this tab is in the background.",
+      "blocked": "Desktop notifications are blocked. To allow them, click the lock icon next to the address bar."
+    }
   },
   "toast": {
     "success": "Success",
