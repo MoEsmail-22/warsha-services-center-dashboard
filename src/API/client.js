@@ -2,7 +2,8 @@ import axios from 'axios';
 
 const baseURL = (import.meta.env.VITE_API_BASE_URL || '/api/v1').replace(/\/$/, '');
 const refreshTokenPath = import.meta.env.VITE_REFRESH_TOKEN_PATH || '/Auth/client/refresh-token';
-const REFRESH_INTERVAL_MS = 8 * 60 * 1000;
+// Tokens last 10 minutes, so renew every 9 (a 401 also triggers a refresh).
+const REFRESH_INTERVAL_MS = 9 * 60 * 1000;
 
 const apiClient = axios.create({
   baseURL,
