@@ -36,6 +36,9 @@ import {
 // Download the opened page's code now, in parallel with the session and translations.
 preloadCurrentPage();
 
+// Development only: `await __compareTokens()` in the console (see utils/devTokenCheck.js).
+if (import.meta.env.DEV) import('./utils/devTokenCheck');
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ToastProvider>
