@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { Search } from 'lucide-react';
 import KanbanColumn from '../components/kanban/KanbanColumn';
 import { useJobs, JOB_STAGES } from '../contexts/JobsContext';
 import { useAppTranslation } from '../hooks/useAppTranslation';
 import CancelBookingModal from '../components/bookings/CancelBookingModal';
+import { getJobsBoard } from '../API/jobsApi';
+import { isDemoMode } from '../API/client';
 
 export default function JobsBoardPage() {
   const { t } = useAppTranslation('dashboard');
@@ -13,6 +15,13 @@ export default function JobsBoardPage() {
   const [search, setSearch] = useState('');
   const [cancelTarget, setCancelTarget] = useState(null);
   const [workflowMessage, setWorkflowMessage] = useState('');
+
+  // Development only: calls GET /Workshop/jobs-board so its response shows in the browser
+  // console ([Jobs API]). The board still doesn't use it until the format is confirmed.
+  useEffect(() => {
+    if (!import.meta.env.DEV || isDemoMode()) return;
+    getJobsBoard().catch(() => {});
+  }, []);
 
   // Filter jobs by search query (vehicle, customer, service)
   const filteredJobs = jobs

@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { assertApiSuccess, handleApiError } from './errors';
+import { logError, logResponse } from './devLog';
 
 /**
  * The workshop's jobs board (cars grouped by stage).
@@ -11,8 +12,10 @@ import { assertApiSuccess, handleApiError } from './errors';
 export async function getJobsBoard() {
   try {
     const response = await apiClient.get('/Workshop/jobs-board');
+    logResponse('Jobs API', 'GET jobs board', response);
     return assertApiSuccess(response.data, 'Failed to load the jobs board.');
   } catch (error) {
+    logError('Jobs API', 'GET jobs board', error);
     return handleApiError(error, 'Load jobs board');
   }
 }
