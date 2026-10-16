@@ -14,7 +14,6 @@ import { createQuote, getQuotes } from '@/API/quotesApi';
 import { isDemoMode } from '@/API/client';
 import { normalizeQuote } from '@/utils/normalizeQuote';
 import { useAuth } from './AuthContext';
-import { useJobs } from './JobsContext';
 import { usePolling } from '@/hooks/usePolling';
 import { POLLING } from '@/constants/polling';
 
@@ -29,27 +28,12 @@ function readQuoteRows(result) {
   return Array.isArray(rows) ? rows : [];
 }
 
-/** The API has a single "note" field, so recommendations are written into it. */
-function buildNote(futureRepairs) {
-  const lines = futureRepairs
-    .filter((repair) => repair.description)
-    .map((repair) =>
-      repair.remainingKm != null
-        ? `- ${repair.description} (in ${repair.remainingKm} km)`
-        : `- ${repair.description}`
-    );
-  return lines.length ? `Recommendations:\n${lines.join('\n')}` : '';
-}
-
 export function QuotesProvider({ children }) {
   const { user } = useAuth();
-  const { workflowQuotes, sendWorkflowQuote } = useJobs();
-
   const [apiQuotes, setApiQuotes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lineItems, setLineItems] = useState(createDefaultLineItems);
-  const [activeWorkflowQuoteId, setActiveWorkflowQuoteId] = useState(null);
 
   const enabled = Boolean(user) && !isDemoMode();
 
@@ -81,7 +65,7 @@ export function QuotesProvider({ children }) {
     async () => {
       if (!(await refresh({ silent: true }))) throw new Error('Quotes check failed');
     },
-    { ...POLLING.bookings, enabled }
+    { ...POLLING.quotes, enabled }
   );
 
   const addLineItem = () => {
@@ -108,41 +92,24 @@ export function QuotesProvider({ children }) {
   };
 
   /**
-   * Sends the quote being built. For a booking: posts it to the API and reloads
-   * the list. For a Jobs board draft: uses the Jobs board's own flow.
+   * Sends the quote being built for a booking (POST) and reloads the list.
    * Throws if the request fails, so the page can show the error.
    */
-  const sendQuote = async ({ bookingId, futureRepairs = [] }) => {
-    if (activeWorkflowQuoteId) {
-      const sentQuote = sendWorkflowQuote(activeWorkflowQuoteId, lineItems, futureRepairs);
-      if (sentQuote) {
-        setActiveWorkflowQuoteId(null);
-        setLineItems(createDefaultLineItems());
-      }
-      return sentQuote;
-    }
-
+  const sendQuote = async ({ bookingId, note = '' }) => {
     const items = lineItems
       .filter((item) => item.label.trim() && Number(item.amount) > 0)
       .map((item) => ({ description: item.label, price: item.amount }));
 
-    const result = await createQuote(bookingId, { items, note: buildNote(futureRepairs) });
+    // The note is optional: null when empty.
+    const result = await createQuote(bookingId, { items, note: note || null });
     setLineItems(createDefaultLineItems());
     await refresh();
     return result;
   };
 
-  const editWorkflowQuote = (quoteId) => {
-    const quote = workflowQuotes.find((item) => item.id === quoteId && item.status === 'draft');
-    if (!quote) return null;
-    setActiveWorkflowQuoteId(quote.id);
-    setLineItems(quote.lineItems.map((item) => ({ ...item })));
-    return quote;
-  };
-
   const total = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
   const value = {
-    recentQuotes: [...workflowQuotes, ...apiQuotes],
+    recentQuotes: apiQuotes,
     loading,
     error,
     refresh,
@@ -153,8 +120,6 @@ export function QuotesProvider({ children }) {
     removeLineItem,
     replaceLineItems,
     sendQuote,
-    editWorkflowQuote,
-    activeWorkflowQuoteId,
   };
 
   return <QuotesContext.Provider value={value}>{children}</QuotesContext.Provider>;

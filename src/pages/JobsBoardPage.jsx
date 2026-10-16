@@ -4,60 +4,53 @@ import { Search } from 'lucide-react';
 import KanbanColumn from '../components/kanban/KanbanColumn';
 import { useJobs, JOB_STAGES } from '../contexts/JobsContext';
 import { useAppTranslation } from '../hooks/useAppTranslation';
-import CancelBookingModal from '../components/bookings/CancelBookingModal';
+import { useNotify } from '../hooks/useNotify';
+import { useErrorMessage } from '../hooks/useErrorMessage';
+import { LoadingScreen } from '../components/ui/LoadingScreen';
 
 export default function JobsBoardPage() {
   const { t } = useAppTranslation('dashboard');
-  const { jobs, workflowQuotes, moveJob, reorderJobs, canMoveJob, createWorkflowQuote, cancelJob } =
-    useJobs();
+  const { jobs, loading, error, refresh, moveJob, reorderJobs } = useJobs();
+  const notify = useNotify();
+  const { getErrorMessage } = useErrorMessage();
   const [search, setSearch] = useState('');
-  const [cancelTarget, setCancelTarget] = useState(null);
-  const [workflowMessage, setWorkflowMessage] = useState('');
 
-  // Filter jobs by search query (vehicle, customer, service)
-  const filteredJobs = jobs
-    .filter((j) => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (
-        j.vehicle.toLowerCase().includes(q) ||
-        j.customer.toLowerCase().includes(q) ||
-        j.service.toLowerCase().includes(q)
-      );
-    })
-    .map((job) => ({
-      ...job,
-      quoteStatus: workflowQuotes.find((quote) => quote.jobId === job.id)?.status,
-    }));
+  // Search by booking number, car, customer or service.
+  const query = search.trim().toLowerCase();
+  const filteredJobs = query
+    ? jobs.filter((job) =>
+        [job.number, job.vehicle, job.customer, job.service].some((text) =>
+          String(text ?? '')
+            .toLowerCase()
+            .includes(query)
+        )
+      )
+    : jobs;
 
-  // Group filtered jobs by stage
   const jobsByStage = JOB_STAGES.reduce((acc, stage) => {
-    acc[stage] = filteredJobs.filter((j) => j.stage === stage);
+    acc[stage] = filteredJobs.filter((job) => job.stage === stage);
     return acc;
   }, {});
 
-  // Count pending quotes (mock — set to 2 as in the mockup)
-  const pendingQuotes = workflowQuotes.filter((quote) => quote.status === 'draft').length;
+  const pendingQuotes = jobs.filter((job) => job.hasPendingQuote).length;
 
-  const handleDragEnd = (result) => {
-    const { source, destination } = result;
+  const handleDragEnd = async ({ source, destination }) => {
     if (!destination) return;
 
-    // Same column → reorder
+    // Same column → only the order on screen changes.
     if (source.droppableId === destination.droppableId) {
-      if (source.index === destination.index) return;
-      reorderJobs(source.index, destination.index, source.droppableId);
-    } else {
-      // Different column → move + reorder
-      const jobId = jobsByStage[source.droppableId][source.index].id;
-      const permission = canMoveJob(jobId, destination.droppableId);
-      if (!permission.allowed) {
-        setWorkflowMessage(t(`jobs.workflow.${permission.reason}`));
-        return;
+      if (source.index !== destination.index) {
+        reorderJobs(source.index, destination.index, source.droppableId);
       }
-      setWorkflowMessage('');
-      moveJob(jobId, destination.droppableId);
-      // Note: reorder within destination is handled by React state re-render
+      return;
+    }
+
+    // Another column → save the new stage; the card goes back if the backend refuses.
+    const job = jobsByStage[source.droppableId][source.index];
+    try {
+      await moveJob(job.id, destination.droppableId);
+    } catch (err) {
+      notify.error(err, 'jobs.move');
     }
   };
 
@@ -80,7 +73,7 @@ export default function JobsBoardPage() {
             </p>
           </div>
 
-          {/* Pending quotes badge (top-right, orange) */}
+          {/* Cars with a quote waiting for the customer's answer */}
           {pendingQuotes > 0 && (
             <div className="inline-flex items-center gap-1.5 rounded-lg bg-orange-100 px-3 py-1.5 text-xs font-semibold text-orange-700">
               <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
@@ -106,48 +99,31 @@ export default function JobsBoardPage() {
         </div>
       </div>
 
-      {workflowMessage && (
-        <div
-          role="alert"
-          className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
-        >
-          {workflowMessage}
+      {/* ============ KANBAN BOARD ============ */}
+      {loading && jobs.length === 0 ? (
+        <LoadingScreen variant="section" />
+      ) : error && jobs.length === 0 ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center">
+          <p className="text-sm text-red-700">{getErrorMessage(error, 'jobs.load')}</p>
+          <button
+            type="button"
+            onClick={() => refresh()}
+            className="mt-2 text-sm font-semibold text-[#0E5C5B] hover:underline"
+          >
+            {t('jobs.retry', { defaultValue: 'Try again' })}
+          </button>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-x-auto pb-4">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex min-w-max gap-4">
+              {JOB_STAGES.map((stage) => (
+                <KanbanColumn key={stage} stage={stage} jobs={jobsByStage[stage] ?? []} />
+              ))}
+            </div>
+          </DragDropContext>
         </div>
       )}
-
-      {/* ============ KANBAN BOARD ============ */}
-      <div className="flex-1 overflow-x-auto pb-4">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex min-w-max gap-4">
-            {JOB_STAGES.map((stage) => (
-              <KanbanColumn
-                key={stage}
-                stage={stage}
-                jobs={jobsByStage[stage] ?? []}
-                onCancel={setCancelTarget}
-                onCreateQuote={(job) => {
-                  const result = createWorkflowQuote(job.id);
-                  setWorkflowMessage(
-                    result.created
-                      ? t('jobs.workflow.quoteCreated')
-                      : t(`jobs.workflow.${result.reason}`)
-                  );
-                }}
-              />
-            ))}
-          </div>
-        </DragDropContext>
-      </div>
-
-      <CancelBookingModal
-        open={Boolean(cancelTarget)}
-        itemName={cancelTarget?.vehicle}
-        onClose={() => setCancelTarget(null)}
-        onConfirm={() => {
-          cancelJob(cancelTarget.id);
-          setCancelTarget(null);
-        }}
-      />
     </div>
   );
 }

@@ -44,13 +44,32 @@ export async function updateBookingStatus(id, statusNumber) {
   }
 }
 
-export async function cancelBooking(id) {
+/** Accepts a pending booking request (no body). */
+export async function acceptBooking(id) {
   try {
-    const response = await apiClient.patch(`/Workshop/bookings/${id}/cancel`);
-    logResponse(`PATCH booking ${id} cancel`, response);
-    return assertApiSuccess(response.data, 'Failed to cancel the booking.');
+    const response = await apiClient.patch(`/Workshop/bookings/${id}/accept`);
+    logResponse(`PATCH booking ${id} accept`, response);
+    return assertApiSuccess(response.data, 'Failed to accept the booking.');
   } catch (error) {
-    logError(`PATCH booking ${id} cancel`, error);
-    return handleApiError(error, 'Cancel booking');
+    logError(`PATCH booking ${id} accept`, error);
+    return handleApiError(error, 'Accept booking');
+  }
+}
+
+/**
+ * Rejects a pending booking request. The body is just the reason, as a JSON string
+ * ("Fully booked that day"); JSON.stringify keeps a reason like "5" from being sent as a number.
+ */
+export async function rejectBooking(id, reason) {
+  try {
+    const response = await apiClient.patch(
+      `/Workshop/bookings/${id}/reject`,
+      JSON.stringify(reason.trim())
+    );
+    logResponse(`PATCH booking ${id} reject`, response);
+    return assertApiSuccess(response.data, 'Failed to reject the booking.');
+  } catch (error) {
+    logError(`PATCH booking ${id} reject`, error);
+    return handleApiError(error, 'Reject booking');
   }
 }

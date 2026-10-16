@@ -65,14 +65,15 @@ function formatMinutes(minutes) {
 export function normalizeBooking(item) {
   const id = item.id ?? item.bookingId;
 
-  const customerName =
+  const realCustomerName =
     item.customerName ??
     item.clientName ??
     item.customer?.fullName ??
     item.customer?.name ??
     item.client?.fullName ??
     item.client?.name ??
-    'Customer';
+    null;
+  const customerName = realCustomerName ?? 'Customer';
 
   const car = typeof item.car === 'object' && item.car ? item.car : {};
   const vehicle =
@@ -97,6 +98,7 @@ export function normalizeBooking(item) {
     (Array.isArray(item.serviceNames) ? item.serviceNames.join(', ') : null) ??
     (serviceNames.length ? serviceNames.join(', ') : 'Service');
 
+  // The appointment time is scheduledAt (bookingDate / date only if an older response lacks it).
   const scheduled = toDate(item.scheduledAt ?? item.bookingDate ?? item.date ?? item.startAt);
   const created = toDate(item.createdAt ?? item.createdOn);
   // The day the booking arrived. The API sends no creation date yet; a booking is
@@ -112,6 +114,8 @@ export function normalizeBooking(item) {
       initials: getInitials(customerName),
       avatarColor: CUSTOMER_COLOR,
     },
+    // false = "Customer" is only a placeholder (the API sent no name).
+    hasCustomerName: Boolean(realCustomerName),
     vehicle: vehicle || '—',
     service,
     ...toLocalDateAndTime(scheduled),
@@ -125,7 +129,8 @@ export function normalizeBooking(item) {
     paymentType: item.paymentType ?? '',
     // Fee the customer paid to confirm the booking (part of the total).
     confirmationFee: Number(item.confirmationFeeAmount ?? 0),
-    cancellationReason: item.cancellationReason ?? '',
+    // Why it was cancelled, or the reason the workshop gave when rejecting the request.
+    cancellationReason: item.cancellationReason ?? item.rejectionReason ?? item.rejectReason ?? '',
     // Raw ISO dates; the drawer formats them in the current language.
     confirmedAt: item.confirmedAt ?? null,
     completedAt: item.completedAt ?? null,
@@ -135,6 +140,9 @@ export function normalizeBooking(item) {
       ? normalizeQuote({ bookingId: id, ...item.pendingQuote })
       : null,
     createdAt: created ? DATE_TIME_FORMATTER.format(created) : '',
+    createdAtIso: item.createdAt ?? item.createdOn ?? null,
+    // When the 5-minute answer window ends (see bookingStatuses.js → approvalDeadlineOf).
+    approvalDeadline: item.approvalDeadline ?? item.approvalExpiresAt ?? null,
     notes,
     serviceBreakdown: services.map((s) => ({
       label: s.nameEn ?? s.name ?? s.serviceName ?? 'Service',

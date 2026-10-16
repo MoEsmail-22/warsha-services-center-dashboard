@@ -16,20 +16,14 @@
     "vehicle": "Vehicle",
     "service": "Service",
     "datetime": "Date/Time",
-    "status": "Status",
-    "actions": "Actions"
+    "status": "Customer status",
+    "actions": "Actions",
+    "total": "Total",
+    "jobStage": "Job stage"
   },
   "showing": "Showing",
   "of": "of",
   "noResults": "No bookings found.",
-  "cancellation": {
-    "button": "Cancel",
-    "title": "Cancel booking?",
-    "message": "Are you sure you want to cancel {{name}}?",
-    "feeWarning": "A cancellation fee of EGP 50 may be charged for this cancellation.",
-    "keep": "Keep booking",
-    "confirm": "Cancel booking"
-  },
   "workflow": {
     "complete": "Complete",
     "createQuote": "Create quote"
@@ -59,7 +53,8 @@
     "createQuote": "Create quote for this booking",
     "voucher": "Customer voucher",
     "voucherPlaceholder": "Enter voucher code",
-    "redeem": "Redeem"
+    "redeem": "Redeem",
+    "jobStage": "Job stage"
   },
   "quotes": {
     "title": "Quotes",
@@ -91,7 +86,7 @@
   },
   "jobStage": {
     "new": "New",
-    "diagnosing": "Diagnosing",
+    "diagnosing": "Confirmed",
     "in_progress": "In progress",
     "ready": "Ready for pickup",
     "completed": "Completed",
@@ -108,5 +103,34 @@
     "in_progress": "↻ Work is in progress on this booking.",
     "completed": "✓ This booking is completed.",
     "cancelled": "✗ This booking has been cancelled."
+  },
+  "requestActions": {
+    "title": "New booking request",
+    "accept": "Accept",
+    "reject": "Reject"
+  },
+  "rejection": {
+    "title": "Reject booking request?",
+    "message": "The customer will be told that {{name}} was rejected.",
+    "reasonLabel": "Reason",
+    "reasonPlaceholder": "e.g. Fully booked that day",
+    "reasonRequired": "Please write a reason.",
+    "keep": "Keep request",
+    "confirm": "Reject request"
+  },
+  "board": {
+    "quotePending": "Quote pending"
+  },
+  "table": {
+    "loadingDetails": "Loading…"
+  },
+  "approval": {
+    "answerWithin": "Answer within {{time}}",
+    "timeUp": "Time's up: auto-rejected",
+    "banner_one": "New booking request: answer within {{time}}",
+    "banner_other": "{{count}} new booking requests: the first ends in {{time}}",
+    "bannerNoTime_one": "A new booking request is waiting for your answer",
+    "bannerNoTime_other": "{{count}} new booking requests are waiting for your answer",
+    "open": "Open"
   }
 }

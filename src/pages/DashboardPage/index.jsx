@@ -6,6 +6,7 @@ import { useReviews } from '../../contexts/ReviewsContext';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useAuth } from '../../contexts/AuthContext';
 import StatCard from '../../components/widgets/StatCard';
+import PendingRequestsBanner from '../../components/bookings/PendingRequestsBanner';
 import { statusStyles } from '../../constants/statusStyles';
 import {
   getCustomerInitials,
@@ -77,6 +78,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      {/* New booking requests waiting for an answer (5-minute window) */}
+      <PendingRequestsBanner />
+
       {/* ============ HEADER ============ */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

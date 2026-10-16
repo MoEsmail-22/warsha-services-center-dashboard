@@ -14,14 +14,23 @@ import Pagination from '../components/widgets/Pagination';
 import { EmptyState } from '../components/widgets/EmptyState';
 import { BOOKING_FILTER_TABS } from '../constants/bookingFilters';
 import { filterBookings, formatBookingDate } from '../utils/bookingHelpers';
-import CancelBookingModal from '../components/bookings/CancelBookingModal';
+import { isAwaitingWorkshop } from '@/constants/bookingStatuses';
+import RejectBookingModal from '../components/bookings/RejectBookingModal';
+import { useJobs } from '../contexts/JobsContext';
+import ApprovalCountdown from '../components/bookings/ApprovalCountdown';
+import PendingRequestsBanner from '../components/bookings/PendingRequestsBanner';
+import { useNow } from '../hooks/useNow';
+import { formatQuoteCurrency } from '../utils/quotes';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { useNotify } from '../hooks/useNotify';
 import { useErrorMessage } from '../hooks/useErrorMessage';
 
 export default function BookingsPage() {
-  const { t } = useAppTranslation('bookings');
-  const { bookings, loading, error, refresh, cancelBooking } = useBookings();
+  const { t, i18n } = useAppTranslation('bookings');
+  const { bookings, loading, error, refresh, loadDetails, acceptBooking, rejectBooking } =
+    useBookings();
+  // The jobs board sends the customer's name (the bookings API doesn't yet).
+  const { jobs } = useJobs();
   const notify = useNotify();
   const { getErrorMessage } = useErrorMessage();
   // ?page=2&size=20 in the URL.
@@ -87,7 +96,23 @@ export default function BookingsPage() {
 
   // ---- Drawer state ----
   const [filterOpen, setFilterOpen] = useState(false);
-  const [cancelTarget, setCancelTarget] = useState(null);
+  // Accept / reject a pending booking request from its row.
+  const [acceptingId, setAcceptingId] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejecting, setRejecting] = useState(false);
+
+  const handleAccept = async (booking) => {
+    if (acceptingId) return;
+    setAcceptingId(booking.id);
+    try {
+      await acceptBooking(booking.id);
+      notify.success('bookingAccepted');
+    } catch (err) {
+      notify.error(err, 'booking.accept');
+    } finally {
+      setAcceptingId(null);
+    }
+  };
 
   const bookingFromList = selectedBookingId
     ? (bookings.find((booking) => String(booking.id) === selectedBookingId) ?? null)
@@ -129,6 +154,8 @@ export default function BookingsPage() {
           ...bookingFromList,
           ...details,
           ...(bookingFromList && { status: bookingFromList.status }),
+          // Same for the job stage, once the list has one (changed from the drawer or the board).
+          ...(bookingFromList?.jobStatus && { jobStatus: bookingFromList.jobStatus }),
         }
       : null;
   // Opening a booking adds a history entry, so the browser's Back button closes it.
@@ -143,6 +170,45 @@ export default function BookingsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPageSafe = Math.min(currentPage, totalPages);
   const paginated = filtered.slice((currentPageSafe - 1) * pageSize, currentPageSafe * pageSize);
+
+  // One clock for every row's countdown; it only ticks while a request is waiting.
+  const now = useNow(bookings.some((booking) => booking.status === 'pending'));
+
+  // The list sends only a few fields: load the details of the rows on this page.
+  const pageIds = paginated.map((booking) => booking.id).join(',');
+  useEffect(() => {
+    if (pageIds) loadDetails(pageIds.split(','));
+  }, [pageIds, loadDetails]);
+
+  const customerNames = useMemo(
+    () =>
+      new Map(
+        jobs.filter((job) => job.customer).map((job) => [String(job.bookingId), job.customer])
+      ),
+    [jobs]
+  );
+  const customerOf = (booking) => {
+    const name = booking.hasCustomerName
+      ? booking.customer.name
+      : (customerNames.get(String(booking.id)) ?? booking.customer.name);
+    const initials = name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+    return { ...booking.customer, name, initials };
+  };
+
+  const isArabic = i18n.language?.startsWith('ar');
+  const money = (amount) =>
+    formatQuoteCurrency(amount, isArabic ? 'ar-EG' : 'en-US', isArabic ? 'ج.م' : 'EGP');
+  const loadingText = (
+    <span className="text-xs text-gray-400">
+      {t('table.loadingDetails', { defaultValue: 'Loading…' })}
+    </span>
+  );
 
   const handleApplyFilters = (filters) => {
     updateParams(
@@ -196,6 +262,9 @@ export default function BookingsPage() {
           </p>
         </div>
       </div>
+
+      {/* New booking requests waiting for an answer (5-minute window) */}
+      <PendingRequestsBanner />
 
       {/* ============ FILTERS + SEARCH ============ */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -261,7 +330,7 @@ export default function BookingsPage() {
         style={{ borderRadius: '16px' }}
       >
         <div className="overflow-x-auto">
-          <table className={paginated.length ? 'w-full min-w-[900px]' : 'w-full'}>
+          <table className={paginated.length ? 'w-full min-w-[1150px]' : 'w-full'}>
             <thead className="border-b border-gray-100 bg-gray-50/50">
               <tr>
                 {[
@@ -270,7 +339,9 @@ export default function BookingsPage() {
                   ['vehicle', 'Vehicle'],
                   ['service', 'Service'],
                   ['datetime', 'Date/Time'],
-                  ['status', 'Status'],
+                  ['total', 'Total'],
+                  ['jobStage', 'Job stage'],
+                  ['status', 'Customer status'],
                   ['actions', 'Actions'],
                 ].map(([key, fallback]) => (
                   <th
@@ -287,13 +358,13 @@ export default function BookingsPage() {
             <tbody>
               {loading && bookings.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={9}>
                     <LoadingScreen variant="section" />
                   </td>
                 </tr>
               ) : error && bookings.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center">
+                  <td colSpan={9} className="py-10 text-center">
                     <p className="text-sm text-red-600">{getErrorMessage(error, 'booking.load')}</p>
                     <button
                       type="button"
@@ -306,7 +377,7 @@ export default function BookingsPage() {
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={9}>
                     {isFiltering ? (
                       <EmptyState
                         icon={<Search />}
@@ -352,40 +423,85 @@ export default function BookingsPage() {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <Avatar
-                          initials={booking.customer.initials}
-                          name={booking.customer.name}
+                          initials={customerOf(booking).initials}
+                          name={customerOf(booking).name}
                           color={booking.customer.avatarColor}
                           size={32}
                         />
                         <span className="text-sm font-medium text-[#15201F]">
-                          {booking.customer.name}
+                          {customerOf(booking).name}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-[#15201F]">{booking.vehicle}</td>
-                    <td className="px-4 py-3.5 text-sm text-[#15201F]">{booking.service}</td>
+                    <td className="px-4 py-3.5 text-sm text-[#15201F]">
+                      {booking.detailsLoaded || booking.vehicle !== '—'
+                        ? booking.vehicle
+                        : loadingText}
+                    </td>
+                    <td
+                      className="max-w-[220px] truncate px-4 py-3.5 text-sm text-[#15201F]"
+                      title={booking.service}
+                    >
+                      {booking.detailsLoaded ? booking.service : loadingText}
+                    </td>
                     <td className="px-4 py-3.5 text-sm text-[#15201F]">
                       <div>
                         <p>{formatBookingDate(booking.date)}</p>
                         <p className="text-xs text-[#5A6968]">{booking.time}</p>
                       </div>
                     </td>
+                    <td className="px-4 py-3.5 text-sm font-semibold whitespace-nowrap text-[#0E5C5B]">
+                      {booking.totalAmount > 0
+                        ? money(booking.totalAmount)
+                        : booking.detailsLoaded
+                          ? '—'
+                          : loadingText}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm whitespace-nowrap text-[#15201F]">
+                      {/* Same pill as the customer status; names match the Jobs Board columns. */}
+                      {booking.jobStatus ? (
+                        <StatusBadge status={booking.jobStatus}>
+                          {t(`jobStage.${booking.jobStatus}`, { defaultValue: booking.jobStatus })}
+                        </StatusBadge>
+                      ) : booking.detailsLoaded ? (
+                        '—'
+                      ) : (
+                        loadingText
+                      )}
+                    </td>
                     <td className="px-4 py-3.5">
-                      <StatusBadge status={booking.status} />
+                      <div className="flex flex-col items-start gap-1">
+                        <StatusBadge status={booking.status} />
+                        <ApprovalCountdown booking={booking} now={now} />
+                      </div>
                     </td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {booking.status === 'pending' && (
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation(); // don't also open the booking
-                              setCancelTarget(booking);
-                            }}
-                            className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
-                          >
-                            {t('cancellation.button')}
-                          </button>
+                        {/* A pending request is accepted or rejected (stopPropagation: don't also open it). */}
+                        {isAwaitingWorkshop(booking, now) && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleAccept(booking);
+                              }}
+                              disabled={acceptingId === booking.id}
+                              className="rounded-md bg-[#0E5C5B] px-2.5 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                            >
+                              {t('requestActions.accept', { defaultValue: 'Accept' })}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setRejectTarget(booking);
+                              }}
+                              className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+                            >
+                              {t('requestActions.reject', { defaultValue: 'Reject' })}
+                            </button>
+                          </>
                         )}
                         <button
                           type="button"
@@ -437,18 +553,21 @@ export default function BookingsPage() {
         onClose={closeBooking}
         booking={selectedBooking}
       />
-      <CancelBookingModal
-        open={Boolean(cancelTarget)}
-        itemName={cancelTarget ? `#${cancelTarget.id}` : ''}
-        onClose={() => setCancelTarget(null)}
-        onConfirm={async () => {
+      <RejectBookingModal
+        open={Boolean(rejectTarget)}
+        itemName={rejectTarget ? rejectTarget.number || `#${rejectTarget.id}` : ''}
+        busy={rejecting}
+        onClose={() => setRejectTarget(null)}
+        onConfirm={async (reason) => {
+          setRejecting(true);
           try {
-            await cancelBooking(cancelTarget.id);
-            notify.success('bookingCancelled');
+            await rejectBooking(rejectTarget.id, reason);
+            notify.success('bookingRejected');
+            setRejectTarget(null);
           } catch (err) {
-            notify.error(err, 'booking.cancel');
+            notify.error(err, 'booking.reject');
           } finally {
-            setCancelTarget(null);
+            setRejecting(false);
           }
         }}
       />

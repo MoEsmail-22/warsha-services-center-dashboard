@@ -116,7 +116,7 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
             id={`${formId}-min-pricing`}
             type="number"
             min="0"
-            step="0.01"
+
             label={t('fields.minPricing')}
             value={form.minPricing}
             onChange={(event) => updateField('minPricing', event.target.value)}
@@ -127,7 +127,7 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
             id={`${formId}-max-pricing`}
             type="number"
             min={form.minPricing || '0'}
-            step="0.01"
+
             label={t('fields.maxPricing')}
             value={form.maxPricing}
             onChange={(event) => updateField('maxPricing', event.target.value)}

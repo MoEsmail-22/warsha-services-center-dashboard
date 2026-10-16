@@ -1,10 +1,22 @@
 import { Draggable } from '@hello-pangea/dnd';
-import { Clock, Check, FilePlus2, XCircle } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { Clock, FilePlus2, FileText } from 'lucide-react';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import StatusBadge from '../widgets/StatusBadge';
 
-export default function KanbanCard({ job, index, onCancel, onCreateQuote }) {
+/** "Oct 18 · 07:30" / «١٨ أكتوبر · ٠٧:٣٠» from the booking's scheduled time. */
+function formatSchedule(value, lang) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return '';
+  const locale = lang === 'ar' ? 'ar-EG' : 'en-US';
+  const day = new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(date);
+  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(date);
+  return `${day} · ${time}`;
+}
+
+export default function KanbanCard({ job, index }) {
   const { t } = useAppTranslation('bookings');
+  const { lang = 'en' } = useParams();
+  const schedule = formatSchedule(job.scheduledAt, lang);
 
   return (
     <Draggable draggableId={job.id} index={index}>
@@ -24,70 +36,49 @@ export default function KanbanCard({ job, index, onCancel, onCreateQuote }) {
               : undefined,
           }}
         >
-          <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 text-sm font-bold text-gray-900">{job.vehicle}</p>
+          {job.number && (
+            <p className="text-[11px] font-semibold tracking-wide text-[#5A6968]">{job.number}</p>
+          )}
+          <p className="min-w-0 text-sm font-bold text-gray-900">{job.vehicle}</p>
 
-            {job.stage === 'new' && (
-              <button
-                type="button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCancel(job);
-                }}
-                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                {t('cancellation.button')}
-              </button>
-            )}
-          </div>
+          {/* ---- Services (gray, below the car) ---- */}
+          {job.service && <p className="mt-0.5 text-xs text-gray-500">{job.service}</p>}
 
-          {/* ---- Service (gray, below vehicle) ---- */}
-          <p className="mt-0.5 text-xs text-gray-500">{job.service}</p>
+          {/* A quote waiting for the customer's answer */}
+          {job.hasPendingQuote && (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-md bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-700">
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('board.quotePending', { defaultValue: 'Quote pending' })}
+            </span>
+          )}
 
-          {job.stage !== 'new' && !job.quoteStatus && (
-            <button
-              type="button"
+          {/* The backend only accepts quotes while the job is in progress. */}
+          {job.stage === 'in_progress' && !job.hasPendingQuote && (
+            <Link
+              to={`/${lang}/quotes?booking=${encodeURIComponent(job.bookingId)}`}
               onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                onCreateQuote(job);
-              }}
               className="mt-2 inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100"
             >
-              <FilePlus2 className="h-3.5 w-3.5" />
-              {t('workflow.createQuote')}
-            </button>
+              <FilePlus2 className="h-3.5 w-3.5" aria-hidden="true" />
+              {t('workflow.createQuote', { defaultValue: 'Create quote' })}
+            </Link>
           )}
 
-          {job.quoteStatus && (
-            <div className="mt-2">
-              <StatusBadge status={job.quoteStatus} />
-            </div>
-          )}
-
-          {/* ---- Customer + time (bottom row) ---- */}
-          <div className="mt-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-50 text-[10px] font-bold text-[#0E5C5B]">
-                {job.initials}
-              </span>
-              <span className="text-xs font-medium text-[#0E5C5B]">{job.customer}</span>
-            </div>
-
-            {job.done ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500">
-                <Check className="h-3 w-3" />
-                Done
-              </span>
-            ) : (
-              job.time && (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                  <Clock className="h-3 w-3" />
-                  {job.time}
+          {/* ---- Customer + date (bottom row) ---- */}
+          <div className="mt-2.5 flex items-center justify-between gap-2">
+            {job.customer && (
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-[10px] font-bold text-[#0E5C5B]">
+                  {job.initials}
                 </span>
-              )
+                <span className="truncate text-xs font-medium text-[#0E5C5B]">{job.customer}</span>
+              </div>
+            )}
+            {schedule && (
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs text-gray-500">
+                <Clock className="h-3 w-3" aria-hidden="true" />
+                {schedule}
+              </span>
             )}
           </div>
         </div>

@@ -80,12 +80,17 @@
     "load": {
       "server": "Bookings couldn't be loaded right now. Please try again."
     },
-    "cancel": {
-      "server": "The booking couldn't be cancelled. Please try again."
-    },
     "status": {
       "server": "The booking status couldn't be changed. Please try again."
-    }
+    },
+    "accept": {
+      "server": "The booking couldn't be accepted. Please try again."
+    },
+    "reject": {
+      "server": "The booking couldn't be rejected. Please try again."
+    },
+    "notAwaitingApproval": "This booking isn't waiting for your answer, so it can't be accepted or rejected.",
+    "deadlineExpired": "The 5 minutes to answer this request are over, so it was rejected automatically."
   },
   "quote": {
     "bookingRequired": "Choose the booking this quote is for.",
@@ -105,5 +110,14 @@
       "validation": "This voucher can't be used. It may be expired or already used.",
       "server": "The voucher couldn't be redeemed right now. Please try again."
     }
+  },
+  "jobs": {
+    "load": {
+      "server": "The jobs board couldn't be loaded. Please try again."
+    },
+    "move": {
+      "server": "The car couldn't be moved. Please try again."
+    },
+    "invalidTransition": "This move isn't allowed: move the car one column at a time."
   }
 }
