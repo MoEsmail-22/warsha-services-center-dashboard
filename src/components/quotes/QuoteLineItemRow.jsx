@@ -21,7 +21,7 @@ export function QuoteLineItemRow({ item, onChange, onRemove, descriptionPlacehol
         <input
           type="number"
           min="0"
-          step="10"
+
           value={item.amount}
           onChange={(event) => onChange(item.id, 'amount', event.target.value)}
           className="h-full w-full bg-transparent px-1.5 text-right text-sm font-semibold text-gray-900 focus:outline-none"

@@ -19,10 +19,11 @@ const STATUS_STYLES = {
 
   // Job statuses
   new: 'bg-accent/10 text-accent-dark',
+  diagnosing: 'bg-status-confirmed/10 text-status-confirmed', // shown as "Confirmed"
   in_progress: 'bg-status-completed/10 text-status-completed',
   inProgress: 'bg-status-completed/10 text-status-completed',
   in_service: 'bg-primary/10 text-primary-700',
-  ready: 'bg-primary/10 text-primary-700',
+  ready: 'bg-[#0E5C5B]/10 text-[#0E5C5B]', // brand teal: ready for pickup
   delayed: 'bg-status-delayed/10 text-status-delayed',
   urgent: 'bg-status-urgent/10 text-status-urgent',
 

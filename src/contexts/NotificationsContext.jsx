@@ -16,8 +16,8 @@ import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { useTranslation } from 'react-i18next';
 import { usePolling } from '@/hooks/usePolling';
-import { useBrowserNotificationPermission } from '@/hooks/useBrowserNotificationPermission';
 import { notifyInBackground } from '@/utils/browserNotifications';
+import { playChime } from '@/utils/notificationSound';
 import { POLLING } from '@/constants/polling';
 
 const NotificationsContext = createContext(null);
@@ -76,6 +76,7 @@ export function NotificationsProvider({ children }) {
     const lang = i18n.language?.startsWith('ar') ? 'ar' : 'en';
     if (seenIds.current) {
       const fresh = items.filter((item) => !item.isRead && !seenIds.current.has(item.id));
+      if (fresh.length > 0) playChime('notification');
       // Tab in the background → desktop notification; otherwise (or if that fails) the toast.
       if (fresh.length === 1) {
         const [item] = fresh;
@@ -162,13 +163,12 @@ export function NotificationsProvider({ children }) {
     return undefined;
   }, [enabled, user?.id, refresh]);
 
-  // With desktop notifications allowed, keep checking while the tab is in the background.
-  const { permission } = useBrowserNotificationPermission();
+  // Always checking, also while the tab is in the background (no real-time channel).
   usePolling(
     async () => {
       if (!(await refresh())) throw new Error('Notifications check failed');
     },
-    { ...POLLING.notifications, enabled, runWhenHidden: permission === 'granted' }
+    { ...POLLING.notifications, enabled, runWhenHidden: true }
   );
 
   const setReadState = (ids, isRead) =>

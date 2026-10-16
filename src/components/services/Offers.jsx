@@ -338,7 +338,6 @@ export default function Offers() {
             type="number"
             min="1"
             max="100"
-            step="0.01"
             label={offerText('fields.discountPercentage', 'Discount percentage')}
             value={form.discountPercentage}
             onChange={(event) => updateField('discountPercentage', event.target.value)}

@@ -9,9 +9,14 @@ export const KNOWN_BACKEND_ERRORS = {
   'invalid token': 'auth.sessionInvalid',
   // A refreshed token without workshopId makes every /Workshop endpoint fail like this.
   'nullable object must have a value': 'auth.sessionInvalid',
+  // accept / reject answer these when the token is missing or expired.
+  'current user is not associated with a workshop': 'auth.sessionInvalid',
+  'current user is not a workshop': 'auth.sessionInvalid',
   'invalid otp': 'auth.invalidOtp',
   'invalid or expired otp': 'auth.invalidOtp',
   'can only create quotes for in-progress jobs': 'quote.jobNotInProgress',
+  'booking is not awaiting workshop approval': 'booking.notAwaitingApproval',
+  'the workshop response deadline has expired': 'booking.deadlineExpired',
 };
 
 /**
@@ -19,6 +24,12 @@ export const KNOWN_BACKEND_ERRORS = {
  * value for the translated text: "Service 'adlf' already exists…" → { name: 'adlf' }.
  */
 export const KNOWN_BACKEND_PATTERNS = [
+  {
+    // PATCH .../status refuses a skipped job stage, e.g. "Invalid transition: New → InProgress".
+    pattern: /^invalid transition: (.+?) (?:→|->) (.+)$/i,
+    key: 'jobs.invalidTransition',
+    values: (match) => ({ from: match[1], to: match[2] }),
+  },
   {
     pattern: /^service ['"](.+)['"] already exists in this workshop$/i,
     key: 'service.alreadyExists',

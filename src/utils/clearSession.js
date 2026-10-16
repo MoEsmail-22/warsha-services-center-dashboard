@@ -3,9 +3,10 @@
  * (tokens, user, settings, offers, busy times, vehicle brands, …) and reloads on
  * the login page, so no data from the previous account stays in memory either.
  *
- * Only the language choice is kept.
+ * Only the language and sound choices are kept.
  */
-const KEEP_KEYS = ['warcha_lang'];
+// Also the sound on/off choice (notificationSound.js), a preference of this browser, not account data.
+const KEEP_KEYS = ['warcha_lang', 'warcha_sound'];
 
 export function clearSessionAndReload() {
   try {

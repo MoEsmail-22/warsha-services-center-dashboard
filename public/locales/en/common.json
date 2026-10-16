@@ -126,15 +126,16 @@
     "registered": "Account created",
     "newBookings_one": "New booking request",
     "newBookings_other": "{{count}} new booking requests",
-    "bookingCancelled": "Booking cancelled",
-    "bookingStatusChanged": "Booking status updated",
     "quoteSent": "Quote sent to the customer",
     "voucherRedeemed": "Voucher redeemed",
     "offerDeleted": "Offer deleted",
     "imageUploaded": "Workshop image updated",
     "carBrandAdded": "Car brand added",
     "carBrandRemoved": "Car brand removed",
-    "desktopNotificationsOn": "Desktop notifications are on"
+    "desktopNotificationsOn": "Desktop notifications are on",
+    "bookingAccepted": "Booking accepted",
+    "bookingRejected": "Booking request rejected",
+    "jobStageChanged": "Job stage updated"
   },
   "notificationsPanel": {
     "title": "Notifications",
@@ -149,6 +150,10 @@
       "enable": "Turn on desktop notifications",
       "enableHint": "Get alerts for new bookings and notifications while this tab is in the background.",
       "blocked": "Desktop notifications are blocked. To allow them, click the lock icon next to the address bar."
+    },
+    "sound": {
+      "turnOn": "Turn sound on",
+      "turnOff": "Turn sound off"
     }
   },
   "toast": {

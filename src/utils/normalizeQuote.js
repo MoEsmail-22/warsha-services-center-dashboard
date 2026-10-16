@@ -63,6 +63,8 @@ export function normalizeQuote(item) {
   return {
     id: item.id ?? item.quoteId,
     bookingId: item.bookingId ?? item.booking?.id ?? null,
+    // What the customer sees (e.g. WRSH-261016-647); the id above is only for the API.
+    bookingNumber: item.bookingNumber ?? item.booking?.bookingNumber ?? '',
     customer: {
       name: customerName,
       initials: getInitials(customerName),
@@ -77,7 +79,9 @@ export function normalizeQuote(item) {
       item.serviceName ||
       '—',
     amount: Number(
-      item.total ??
+      // extraTotal: the quote's total from the API (the extra work, not the whole booking).
+      item.extraTotal ??
+        item.total ??
         item.totalAmount ??
         item.totalPrice ??
         item.amount ??

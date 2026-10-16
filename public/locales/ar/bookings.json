@@ -16,20 +16,14 @@
     "vehicle": "المركبة",
     "service": "الخدمة",
     "datetime": "التاريخ/الوقت",
-    "status": "الحالة",
-    "actions": "إجراءات"
+    "status": "حالة العميل",
+    "actions": "إجراءات",
+    "total": "الإجمالي",
+    "jobStage": "مرحلة العمل"
   },
   "showing": "عرض",
   "of": "من",
   "noResults": "لا توجد حجوزات.",
-  "cancellation": {
-    "button": "إلغاء",
-    "title": "إلغاء الحجز؟",
-    "message": "هل أنت متأكد من إلغاء {{name}}؟",
-    "feeWarning": "قد يتم احتساب رسوم إلغاء بقيمة 50 جنيهًا مصريًا لهذا الإلغاء.",
-    "keep": "الاحتفاظ بالحجز",
-    "confirm": "إلغاء الحجز"
-  },
   "workflow": {
     "complete": "إكمال",
     "createQuote": "إنشاء عرض سعر"
@@ -60,7 +54,8 @@
     "createQuote": "إنشاء عرض سعر لهذا الحجز",
     "voucher": "قسيمة العميل",
     "voucherPlaceholder": "أدخل رمز القسيمة",
-    "redeem": "استخدام"
+    "redeem": "استخدام",
+    "jobStage": "مرحلة العمل"
   },
   "quotes": {
     "title": "عروض الأسعار",
@@ -92,7 +87,7 @@
   },
   "jobStage": {
     "new": "جديد",
-    "diagnosing": "قيد الفحص",
+    "diagnosing": "مؤكد",
     "in_progress": "قيد التنفيذ",
     "ready": "جاهز للاستلام",
     "completed": "مكتمل",
@@ -109,5 +104,42 @@
     "in_progress": "↻ العمل جارٍ على هذا الحجز.",
     "completed": "✓ تم إكمال هذا الحجز.",
     "cancelled": "✗ تم إلغاء هذا الحجز."
+  },
+  "requestActions": {
+    "title": "طلب حجز جديد",
+    "accept": "قبول",
+    "reject": "رفض"
+  },
+  "rejection": {
+    "title": "رفض طلب الحجز؟",
+    "message": "سيتم إبلاغ العميل برفض الحجز {{name}}.",
+    "reasonLabel": "السبب",
+    "reasonPlaceholder": "مثال: لا توجد مواعيد متاحة في هذا اليوم",
+    "reasonRequired": "من فضلك اكتب السبب.",
+    "keep": "الإبقاء على الطلب",
+    "confirm": "رفض الطلب"
+  },
+  "board": {
+    "quotePending": "عرض سعر بانتظار الرد"
+  },
+  "table": {
+    "loadingDetails": "جارٍ التحميل…"
+  },
+  "approval": {
+    "answerWithin": "رُد خلال {{time}}",
+    "timeUp": "انتهى الوقت: رُفض تلقائيًا",
+    "banner_zero": "طلب حجز جديد: رُد خلال {{time}}",
+    "banner_one": "طلب حجز جديد: رُد خلال {{time}}",
+    "banner_two": "طلبا حجز جديدان: ينتهي الأول خلال {{time}}",
+    "banner_few": "{{count}} طلبات حجز جديدة: ينتهي الأول خلال {{time}}",
+    "banner_many": "{{count}} طلب حجز جديد: ينتهي الأول خلال {{time}}",
+    "banner_other": "{{count}} طلب حجز جديد: ينتهي الأول خلال {{time}}",
+    "bannerNoTime_zero": "طلب حجز جديد بانتظار ردك",
+    "bannerNoTime_one": "طلب حجز جديد بانتظار ردك",
+    "bannerNoTime_two": "طلبا حجز جديدان بانتظار ردك",
+    "bannerNoTime_few": "{{count}} طلبات حجز جديدة بانتظار ردك",
+    "bannerNoTime_many": "{{count}} طلب حجز جديد بانتظار ردك",
+    "bannerNoTime_other": "{{count}} طلب حجز جديد بانتظار ردك",
+    "open": "فتح"
   }
 }

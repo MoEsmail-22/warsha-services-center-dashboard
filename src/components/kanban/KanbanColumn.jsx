@@ -20,7 +20,7 @@ const STAGE_META = {
   ready: { label: 'Ready', icon: '✅', iconBg: 'bg-green-100', iconColor: 'text-green-600' },
 };
 
-export default function KanbanColumn({ stage, jobs, onCancel, onCreateQuote }) {
+export default function KanbanColumn({ stage, jobs }) {
   const { t } = useAppTranslation('dashboard');
   const meta = STAGE_META[stage] ?? STAGE_META.new;
 
@@ -55,19 +55,13 @@ export default function KanbanColumn({ stage, jobs, onCancel, onCreateQuote }) {
             style={{ minHeight: '200px' }}
           >
             {jobs.map((job, index) => (
-              <KanbanCard
-                key={job.id}
-                job={job}
-                index={index}
-                onCancel={onCancel}
-                onCreateQuote={onCreateQuote}
-              />
+              <KanbanCard key={job.id} job={job} index={index} />
             ))}
             {provided.placeholder}
 
             {jobs.length === 0 && !snapshot.isDraggingOver && (
               <div className="flex h-32 items-center justify-center rounded-lg border-2 border-dashed border-gray-200 text-xs text-gray-400">
-                Drop jobs here
+                {t('jobs.dropHere', { defaultValue: 'Drop jobs here' })}
               </div>
             )}
           </div>

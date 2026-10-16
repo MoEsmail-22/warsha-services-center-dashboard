@@ -3,12 +3,13 @@
  * Clicking an unread notification marks it as read.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Bell, BellOff, BellRing, CheckCheck } from 'lucide-react';
+import { Bell, BellOff, BellRing, CheckCheck, Volume2, VolumeX } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useNotify } from '@/hooks/useNotify';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
+import { useSoundEnabled } from '@/hooks/useSoundEnabled';
 import { useBrowserNotificationPermission } from '@/hooks/useBrowserNotificationPermission';
 import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/utils/cn';
@@ -24,9 +25,22 @@ const TIME_UNITS = [
 ];
 
 /** "5 minutes ago" / «منذ 5 دقائق» with the browser's built-in Intl (no date library needed). */
+/**
+ * The backend sends notification times in UTC without a timezone ("2026-10-16T11:30:00"),
+ * which the browser would read as local (Egypt) time, 3 hours off. Times without a zone are
+ * read as UTC; times with "Z" or "+03:00" are used as they are.
+ */
+function parseServerTime(value) {
+  if (!value) return null;
+  const text = String(value);
+  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(text);
+  const date = new Date(hasZone || !text.includes('T') ? text : `${text}Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function timeAgo(value, lang) {
-  const date = new Date(value);
-  if (!value || Number.isNaN(date.getTime())) return '';
+  const date = parseServerTime(value);
+  if (!date) return '';
   const seconds = Math.round((date.getTime() - Date.now()) / 1000);
   const format = new Intl.RelativeTimeFormat(lang === 'ar' ? 'ar' : 'en', { numeric: 'auto' });
   for (const [unit, size] of TIME_UNITS) {
@@ -52,6 +66,7 @@ export default function NotificationBell() {
     markAllAsRead,
   } = useNotifications();
   const { permission, request: requestPermission } = useBrowserNotificationPermission();
+  const { soundOn, toggleSound } = useSoundEnabled();
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   const text = (key, defaultValue, options) =>
@@ -122,16 +137,40 @@ export default function NotificationBell() {
         <div className="absolute end-0 z-50 mt-2 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
           <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
             <p className="text-sm font-semibold text-[#15201F]">{text('title', 'Notifications')}</p>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAll}
+                  className="flex items-center gap-1 text-xs font-semibold text-[#0E5C5B] hover:underline"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  {text('markAllRead', 'Mark all as read')}
+                </button>
+              )}
+              {/* Sound for new notifications and bookings (turning it on plays a sample) */}
               <button
                 type="button"
-                onClick={handleMarkAll}
-                className="flex items-center gap-1 text-xs font-semibold text-[#0E5C5B] hover:underline"
+                onClick={toggleSound}
+                aria-pressed={soundOn}
+                title={
+                  soundOn
+                    ? text('sound.turnOff', 'Turn sound off')
+                    : text('sound.turnOn', 'Turn sound on')
+                }
+                aria-label={
+                  soundOn
+                    ? text('sound.turnOff', 'Turn sound off')
+                    : text('sound.turnOn', 'Turn sound on')
+                }
+                className={cn(
+                  'rounded-md p-1 transition-colors hover:bg-gray-100',
+                  soundOn ? 'text-[#0E5C5B]' : 'text-gray-400'
+                )}
               >
-                <CheckCheck className="h-3.5 w-3.5" />
-                {text('markAllRead', 'Mark all as read')}
+                {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               </button>
-            )}
+            </div>
           </div>
 
           {/* Desktop notifications: ask once; explain how to unblock if the user blocked them. */}

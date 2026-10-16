@@ -46,22 +46,14 @@
     "subtitle": "Drag cars across stages as you work. Customers see updates live.",
     "search": "Search bookings, customers, plates...",
     "quotesPending": "quotes pending",
-    "workflow": {
-      "quoteMustBeSent": "Create and send the billing quote before moving this job to Ready.",
-      "invalidTransition": "Move the job through each stage in order: New, Confirmed, In progress, then Ready.",
-      "readyAndSentRequired": "The job must be Ready and have a sent quote before completion.",
-      "jobNotFound": "The selected job could not be found.",
-      "diagnosisRequired": "Move the job to Confirmed before creating its billing quote.",
-      "quoteCreated": "A draft quote was created. Open Quotes to edit and send it.",
-      "quoteAlreadyExists": "This job already has a quote.",
-      "completed": "The job and linked booking were marked as completed."
-    },
     "stages": {
       "new": "New",
       "diagnosing": "Confirmed",
       "in_progress": "In progress",
       "ready": "Ready"
-    }
+    },
+    "dropHere": "Drop jobs here",
+    "retry": "Try again"
   },
   "greetingSeparator": ", "
 }

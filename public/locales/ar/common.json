@@ -133,15 +133,16 @@
     "newBookings_few": "{{count}} طلبات حجز جديدة",
     "newBookings_many": "{{count}} طلب حجز جديد",
     "newBookings_other": "{{count}} طلب حجز جديد",
-    "bookingCancelled": "تم إلغاء الحجز",
-    "bookingStatusChanged": "تم تحديث حالة الحجز",
     "quoteSent": "تم إرسال عرض السعر للعميل",
     "voucherRedeemed": "تم استخدام القسيمة",
     "offerDeleted": "تم حذف العرض",
     "imageUploaded": "تم تحديث صورة الورشة",
     "carBrandAdded": "تمت إضافة ماركة السيارة",
     "carBrandRemoved": "تم حذف ماركة السيارة",
-    "desktopNotificationsOn": "تم تفعيل إشعارات سطح المكتب"
+    "desktopNotificationsOn": "تم تفعيل إشعارات سطح المكتب",
+    "bookingAccepted": "تم قبول الحجز",
+    "bookingRejected": "تم رفض طلب الحجز",
+    "jobStageChanged": "تم تحديث مرحلة العمل"
   },
   "notificationsPanel": {
     "title": "الإشعارات",
@@ -160,6 +161,10 @@
       "enable": "تفعيل إشعارات سطح المكتب",
       "enableHint": "تلقَّ تنبيهات بالحجوزات والإشعارات الجديدة أثناء وجود هذه الصفحة في الخلفية.",
       "blocked": "إشعارات سطح المكتب محظورة. للسماح بها، اضغط على أيقونة القفل بجوار شريط العنوان."
+    },
+    "sound": {
+      "turnOn": "تشغيل الصوت",
+      "turnOff": "إيقاف الصوت"
     }
   },
   "toast": {
