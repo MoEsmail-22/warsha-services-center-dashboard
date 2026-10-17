@@ -24,6 +24,15 @@ export default function BookingDetailsDrawer({ open, onClose, booking }) {
       : '';
   };
 
+  // The customer's request as a numbered list: one item per line, or per comma /
+  // semicolon when written on one line ("Oil change, brakes" → 1- Oil change, 2- brakes).
+  const notesText = String(booking.notes ?? '').trim();
+  const requestLines = (
+    notesText.includes('\n') ? notesText.split(/\r?\n/) : notesText.split(/[,،;؛]/)
+  )
+    .map((line) => line.replace(/^\s*(\d+\s*[-.)]|[-•*])\s*/, '').trim())
+    .filter(Boolean);
+
   const serviceBreakdown = booking.serviceBreakdown ?? [];
   const servicesTotal = serviceBreakdown.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
   // The API's total is the source of truth; the services' sum is only a fallback.
@@ -105,15 +114,21 @@ export default function BookingDetailsDrawer({ open, onClose, booking }) {
         ))}
       </dl>
 
-      {/* ---- Customer notes / cancellation reason ---- */}
-      {booking.notes && (
+      {/* ---- Service request (the customer's notes) / cancellation reason ---- */}
+      {requestLines.length > 0 && (
         <div className="mb-6 flex gap-3 rounded-xl border border-[#E8E2D8] bg-[#FBF8F3] p-3">
           <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-[#8A8074]" aria-hidden="true" />
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-bold tracking-wide text-[#5A6968] uppercase">
-              {t('details.notes', { defaultValue: 'Customer notes' })}
+              {t('details.notes', { defaultValue: 'Service request' })}
             </p>
-            <p className="mt-0.5 text-sm text-[#15201F]">{booking.notes}</p>
+            <ol className="mt-1 space-y-0.5 text-sm text-[#15201F]">
+              {requestLines.map((line, index) => (
+                <li key={index}>
+                  {index + 1}- {line}
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       )}

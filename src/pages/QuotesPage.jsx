@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Send, Search, FileText } from 'lucide-react';
 import { EmptyState } from '../components/widgets/EmptyState';
+import VoucherRedeemForm from '../components/bookings/VoucherRedeemForm';
 import { useQuotes } from '../contexts/QuotesContext';
 import { useBookings } from '../contexts/BookingsContext';
 import { useNotify } from '../hooks/useNotify';
@@ -300,6 +301,14 @@ export default function QuotesPage() {
               />
             </div>
           </div>
+
+          {/* Customer promo code / voucher for the chosen booking (already accepted: quotes are
+              only for bookings in progress) */}
+          {selectedBooking && (
+            <div className="mt-5 rounded-xl border border-[#E8E2D8] bg-[#FBF8F3] p-4">
+              <VoucherRedeemForm bookingId={selectedBooking.id} />
+            </div>
+          )}
 
           {/* Total + Send button */}
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">

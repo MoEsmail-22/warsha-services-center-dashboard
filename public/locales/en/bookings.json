@@ -70,7 +70,7 @@
     "scheduled": "Date / Time",
     "jobStage": "Job stage",
     "payment": "Payment",
-    "notes": "Customer notes",
+    "notes": "Service request",
     "cancellationReason": "Cancellation reason",
     "noServices": "No service details available.",
     "confirmationFee": "Booking confirmation fee",
