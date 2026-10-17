@@ -4,17 +4,18 @@ import { assertApiSuccess, createLocalError, handleApiError } from './errors';
 /**
  * Converts the Offers form values into the body the API expects.
  *   serviceId          → "12" (select value)
+ *   allServices        → true to apply the offer to every service (serviceId is left out)
  *   discountPercentage → "15" (0–100)
  *   startAt / endAt    → "2026-10-07T10:00" (datetime-local, user's local time)
- * Returns { serviceId, discountPercentage, startAt, endAt } with numbers and UTC ISO dates.
+ * Returns { serviceId?, discountPercentage, startAt, endAt } with numbers and UTC ISO dates.
  */
-export function toOfferPayload({ serviceId, discountPercentage, startAt, endAt }) {
+export function toOfferPayload({ serviceId, allServices, discountPercentage, startAt, endAt }) {
   const id = Number(serviceId);
   const discount = Number(discountPercentage);
   const start = new Date(startAt);
   const end = new Date(endAt);
 
-  if (!Number.isInteger(id) || id <= 0)
+  if (!allServices && (!Number.isInteger(id) || id <= 0))
     throw createLocalError('offer.serviceRequired', 'Choose a service for this offer.');
   if (!Number.isFinite(discount) || discount <= 0 || discount > 100) {
     throw createLocalError(
@@ -30,7 +31,8 @@ export function toOfferPayload({ serviceId, discountPercentage, startAt, endAt }
     throw createLocalError('form.endBeforeStart', 'The end time must be after the start time.');
 
   return {
-    serviceId: id,
+    // No serviceId → the backend applies the offer to all services.
+    ...(allServices ? {} : { serviceId: id }),
     discountPercentage: discount,
     startAt: start.toISOString(),
     endAt: end.toISOString(),

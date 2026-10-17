@@ -27,6 +27,7 @@ import { createOffer, deleteOffer, getOffers } from '@/API/offersApi';
 
 const EMPTY_FORM = {
   serviceId: '',
+  allServices: false,
   discountPercentage: '',
   startAt: '',
   endAt: '',
@@ -89,7 +90,7 @@ export default function Offers() {
 
   const hasServices = services.length > 0;
   const isFormValid =
-    form.serviceId !== '' &&
+    (form.allServices || form.serviceId !== '') &&
     Number(form.discountPercentage) > 0 &&
     Number(form.discountPercentage) <= 100 &&
     form.startAt !== '' &&
@@ -132,6 +133,8 @@ export default function Offers() {
   }, [modalOpen, services.length]);
 
   const serviceName = (offer) => {
+    if (offer.serviceId == null) return offerText('allServices', 'All services');
+
     const service = services.find((item) => String(item.id) === String(offer.serviceId));
     if (service) return service.name[lang] || service.name.en;
 
@@ -318,21 +321,38 @@ export default function Offers() {
         }
       >
         <form id="add-offer-form" onSubmit={addOffer} className="grid gap-4 sm:grid-cols-2">
-          <Select
-            id="offer-service"
-            label={offerText('fields.service', 'Service')}
-            value={form.serviceId}
-            onChange={(event) => updateField('serviceId', event.target.value)}
-            disabled={!hasServices}
-            required
-          >
-            <option value="">{offerText('fields.selectService', 'Choose a service')}</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name[lang] || service.name.en}
+          <div className="flex flex-col gap-2">
+            <Select
+              id="offer-service"
+              label={offerText('fields.service', 'Service')}
+              value={form.allServices ? '' : form.serviceId}
+              onChange={(event) => updateField('serviceId', event.target.value)}
+              disabled={!hasServices || form.allServices}
+              required={!form.allServices}
+            >
+              <option value="">
+                {form.allServices
+                  ? offerText('allServices', 'All services')
+                  : offerText('fields.selectService', 'Choose a service')}
               </option>
-            ))}
-          </Select>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name[lang] || service.name.en}
+                </option>
+              ))}
+            </Select>
+            <Button
+              type="button"
+              size="sm"
+              variant={form.allServices ? 'primary' : 'outline'}
+              aria-pressed={form.allServices}
+              onClick={() => updateField('allServices', !form.allServices)}
+              disabled={!hasServices}
+              className="self-start"
+            >
+              {offerText('fields.selectAllServices', 'Select all services')}
+            </Button>
+          </div>
           <Input
             id="offer-discount-percentage"
             type="number"
