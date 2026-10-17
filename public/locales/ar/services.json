@@ -103,6 +103,7 @@
     "fields": {
       "service": "الخدمة",
       "selectService": "اختر خدمة",
+      "selectAllServices": "تحديد كل الخدمات",
       "discountPercentage": "نسبة الخصم",
       "startAt": "يبدأ في",
       "endAt": "ينتهي في"
@@ -113,6 +114,7 @@
       "retry": "حاول مرة أخرى"
     },
     "noServices": "أضف خدمة أولاً لإنشاء عرض.",
+    "allServices": "كل الخدمات",
     "saving": "جارٍ الحفظ…",
     "emptyDescription": "أنشئ خصماً على خدمة لفترة محددة.",
     "delete": {

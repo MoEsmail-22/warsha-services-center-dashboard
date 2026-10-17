@@ -103,6 +103,7 @@
     "fields": {
       "service": "Service",
       "selectService": "Choose a service",
+      "selectAllServices": "Select all services",
       "discountPercentage": "Discount percentage",
       "startAt": "Starts at",
       "endAt": "Ends at"
@@ -113,6 +114,7 @@
       "retry": "Try again"
     },
     "noServices": "Add a service first to create an offer.",
+    "allServices": "All services",
     "saving": "Saving…",
     "emptyDescription": "Create a discount on a service for a set time.",
     "delete": {
