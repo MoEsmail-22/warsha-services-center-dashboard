@@ -5,15 +5,14 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Check, FilePlus2, TicketPercent, X } from 'lucide-react';
+import { Check, FilePlus2, X } from 'lucide-react';
 import { useBookings } from '@/contexts/BookingsContext';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useNotify } from '@/hooks/useNotify';
-import { redeemVoucher } from '@/API/vouchersApi';
 import { isAwaitingWorkshop } from '@/constants/bookingStatuses';
-import { createLocalError } from '@/API/errors';
 import { Spinner } from '@/components/ui/Spinner';
 import RejectBookingModal from './RejectBookingModal';
+import VoucherRedeemForm from './VoucherRedeemForm';
 import ApprovalCountdown from './ApprovalCountdown';
 import { useNow } from '@/hooks/useNow';
 
@@ -30,8 +29,6 @@ export default function BookingActions({ booking }) {
   const currentStage = booking.jobStatus || 'new';
   const [stage, setStage] = useState(currentStage);
   const [savingStage, setSavingStage] = useState(false);
-  const [voucherCode, setVoucherCode] = useState('');
-  const [redeeming, setRedeeming] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -70,10 +67,11 @@ export default function BookingActions({ booking }) {
   // Show the booking's current stage again when another booking is opened.
   useEffect(() => {
     setStage(currentStage);
-    setVoucherCode('');
   }, [booking.id, currentStage]);
 
   const isClosed = ['cancelled', 'completed'].includes(booking.status);
+  // Accepted = not waiting for the workshop's answer, and not cancelled.
+  const isAccepted = !isPending && booking.status !== 'pending' && booking.status !== 'cancelled';
 
   const saveStage = async () => {
     if (stage === currentStage || savingStage) return;
@@ -86,25 +84,6 @@ export default function BookingActions({ booking }) {
       notify.error(err, 'booking.status');
     } finally {
       setSavingStage(false);
-    }
-  };
-
-  const applyVoucher = async (event) => {
-    event.preventDefault();
-    if (redeeming) return;
-    if (!voucherCode.trim()) {
-      notify.error(createLocalError('voucher.codeRequired', 'Enter the voucher code.'));
-      return;
-    }
-    setRedeeming(true);
-    try {
-      await redeemVoucher(voucherCode);
-      notify.success('voucherRedeemed');
-      setVoucherCode('');
-    } catch (err) {
-      notify.error(err, 'voucher.redeem');
-    } finally {
-      setRedeeming(false);
     }
   };
 
@@ -199,36 +178,8 @@ export default function BookingActions({ booking }) {
         </Link>
       )}
 
-      {/* Voucher */}
-      <form onSubmit={applyVoucher}>
-        <label
-          htmlFor={`booking-voucher-${booking.id}`}
-          className="mb-1.5 block text-xs font-bold tracking-wide text-[#5A6968] uppercase"
-        >
-          {t('actions.voucher', { defaultValue: 'Customer voucher' })}
-        </label>
-        <div className="flex gap-2">
-          <div className="relative min-w-0 flex-1">
-            <TicketPercent className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              id={`booking-voucher-${booking.id}`}
-              type="text"
-              value={voucherCode}
-              onChange={(event) => setVoucherCode(event.target.value.toUpperCase())}
-              placeholder={t('actions.voucherPlaceholder', { defaultValue: 'Enter voucher code' })}
-              className="w-full rounded-lg border border-gray-200 bg-white py-2 ps-9 pe-3 text-sm text-gray-900 uppercase placeholder:text-gray-400 placeholder:normal-case focus:border-[#0E5C5B] focus:outline-none"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={redeeming}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#E8E2D8] bg-white px-4 text-sm font-semibold text-[#1C1712] hover:bg-[#F2EDE4] disabled:opacity-50"
-          >
-            {redeeming && <Spinner size="sm" />}
-            {t('actions.redeem', { defaultValue: 'Redeem' })}
-          </button>
-        </div>
-      </form>
+      {/* Promo code / voucher: only once the booking has been accepted */}
+      {isAccepted && <VoucherRedeemForm bookingId={booking.id} />}
 
       <RejectBookingModal
         open={rejectOpen}
