@@ -103,10 +103,11 @@
     "fields": {
       "service": "Service",
       "selectService": "Choose a service",
-      "selectAllServices": "Select all services",
+      "selectAllServices": "Apply to all services",
       "discountPercentage": "Discount percentage",
       "startAt": "Starts at",
-      "endAt": "Ends at"
+      "endAt": "Ends at",
+      "selectAllServicesHint": "The discount applies to every service in your workshop."
     },
     "actions": {
       "cancel": "Cancel",
