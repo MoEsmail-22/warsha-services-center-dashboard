@@ -103,10 +103,11 @@
     "fields": {
       "service": "الخدمة",
       "selectService": "اختر خدمة",
-      "selectAllServices": "تحديد كل الخدمات",
+      "selectAllServices": "تطبيق على كل الخدمات",
       "discountPercentage": "نسبة الخصم",
       "startAt": "يبدأ في",
-      "endAt": "ينتهي في"
+      "endAt": "ينتهي في",
+      "selectAllServicesHint": "يُطبَّق الخصم على كل خدمات الورشة."
     },
     "actions": {
       "cancel": "إلغاء",

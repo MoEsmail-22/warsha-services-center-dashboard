@@ -21,6 +21,7 @@ import {
   TD,
   TH,
   THead,
+  Toggle,
   TR,
 } from '@/components/ui';
 import { createOffer, deleteOffer, getOffers } from '@/API/offersApi';
@@ -321,6 +322,25 @@ export default function Offers() {
         }
       >
         <form id="add-offer-form" onSubmit={addOffer} className="grid gap-4 sm:grid-cols-2">
+          {/* All services: a switch at the top of the form (the request then has no serviceId) */}
+          <div
+            className={`rounded-xl border px-4 py-3 transition-colors sm:col-span-2 ${
+              form.allServices ? 'border-[#0E5C5B] bg-[#F2F8F7]' : 'border-[#E8E2D8] bg-[#FBF8F3]'
+            }`}
+          >
+            <Toggle
+              id="offer-all-services"
+              checked={form.allServices}
+              onChange={(checked) => updateField('allServices', checked)}
+              disabled={!hasServices}
+              label={offerText('fields.selectAllServices', 'Apply to all services')}
+              description={offerText(
+                'fields.selectAllServicesHint',
+                'The discount applies to every service in your workshop.'
+              )}
+            />
+          </div>
+
           <div className="flex flex-col gap-2">
             <Select
               id="offer-service"
@@ -341,17 +361,6 @@ export default function Offers() {
                 </option>
               ))}
             </Select>
-            <Button
-              type="button"
-              size="sm"
-              variant={form.allServices ? 'primary' : 'outline'}
-              aria-pressed={form.allServices}
-              onClick={() => updateField('allServices', !form.allServices)}
-              disabled={!hasServices}
-              className="self-start"
-            >
-              {offerText('fields.selectAllServices', 'Select all services')}
-            </Button>
           </div>
           <Input
             id="offer-discount-percentage"
