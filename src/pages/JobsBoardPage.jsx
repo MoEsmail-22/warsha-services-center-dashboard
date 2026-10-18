@@ -6,6 +6,8 @@ import { useJobs, JOB_STAGES } from '../contexts/JobsContext';
 import { useAppTranslation } from '../hooks/useAppTranslation';
 import { useNotify } from '../hooks/useNotify';
 import { useErrorMessage } from '../hooks/useErrorMessage';
+import { useQuotes } from '../contexts/QuotesContext';
+import { createLocalError } from '../API/errors';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 
 export default function JobsBoardPage() {
@@ -34,6 +36,17 @@ export default function JobsBoardPage() {
 
   const pendingQuotes = jobs.filter((job) => job.hasPendingQuote).length;
 
+  // Sent = waiting for the customer's answer (board's hasPendingQuote) or a quote in the
+  // Quotes list that was sent or accepted.
+  const { recentQuotes } = useQuotes();
+  const quoteWasSent = (job) =>
+    job.hasPendingQuote ||
+    recentQuotes.some(
+      (quote) =>
+        String(quote.bookingId) === String(job.bookingId) &&
+        ['sent', 'accepted'].includes(quote.status)
+    );
+
   const handleDragEnd = async ({ source, destination }) => {
     if (!destination) return;
 
@@ -47,6 +60,13 @@ export default function JobsBoardPage() {
 
     // Another column → save the new stage; the card goes back if the backend refuses.
     const job = jobsByStage[source.droppableId][source.index];
+    // A car can only be Ready once its quote has been sent to the customer.
+    if (destination.droppableId === 'ready' && !quoteWasSent(job)) {
+      notify.error(
+        createLocalError('jobs.quoteRequired', 'Send the quote before moving the car to Ready.')
+      );
+      return;
+    }
     try {
       await moveJob(job.id, destination.droppableId);
     } catch (err) {

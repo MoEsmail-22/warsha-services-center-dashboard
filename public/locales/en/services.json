@@ -69,10 +69,6 @@
     "modal": {
       "title": "Set as busy"
     },
-    "fields": {
-      "startAt": "Starts at",
-      "endAt": "Ends at"
-    },
     "units": {
       "hour": "hour",
       "hours": "hours"
@@ -82,7 +78,8 @@
       "delete": "Remove busy time"
     },
     "saving": "Saving…",
-    "emptyDescription": "Customers can book you anytime during your working hours."
+    "emptyDescription": "Customers can book you anytime during your working hours.",
+    "summary": "Busy"
   },
   "offers": {
     "title": "Offers",
@@ -105,9 +102,9 @@
       "selectService": "Choose a service",
       "selectAllServices": "Apply to all services",
       "discountPercentage": "Discount percentage",
-      "startAt": "Starts at",
-      "endAt": "Ends at",
-      "selectAllServicesHint": "The discount applies to every service in your workshop."
+      "selectAllServicesHint": "The discount applies to every service in your workshop.",
+      "howLong": "How long does it run?",
+      "runs": "Offer runs"
     },
     "actions": {
       "cancel": "Cancel",

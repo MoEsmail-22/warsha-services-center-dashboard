@@ -118,6 +118,12 @@
     "move": {
       "server": "The car couldn't be moved. Please try again."
     },
-    "invalidTransition": "This move isn't allowed: move the car one column at a time."
+    "invalidTransition": "This move isn't allowed: move the car one column at a time.",
+    "quoteRequired": "Send the quote before moving the car to Ready."
+  },
+  "reviews": {
+    "load": {
+      "server": "Could not load the reviews. Please try again."
+    }
   }
 }

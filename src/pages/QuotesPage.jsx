@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Send, Search, FileText } from 'lucide-react';
+import { Plus, Send, Search, FileText, Trash2 } from 'lucide-react';
 import { EmptyState } from '../components/widgets/EmptyState';
 import VoucherRedeemForm from '../components/bookings/VoucherRedeemForm';
 import { useQuotes } from '../contexts/QuotesContext';
@@ -61,6 +61,20 @@ export default function QuotesPage() {
 
   const [search, setSearch] = useState('');
   const [note, setNote] = useState('');
+  // Future repairs / recommendations (description + remaining km). Screen only for now:
+  // the quote endpoint has no field for them, so they are not sent.
+  const [recommendations, setRecommendations] = useState([]);
+  const addRecommendation = () =>
+    setRecommendations((current) => [
+      ...current,
+      { id: `${Date.now()}-${Math.random()}`, description: '', remainingKm: '' },
+    ]);
+  const updateRecommendation = (id, field, value) =>
+    setRecommendations((current) =>
+      current.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  const removeRecommendation = (id) =>
+    setRecommendations((current) => current.filter((item) => item.id !== id));
   const [sending, setSending] = useState(false);
 
   // Choosing a booking starts the quote from its services (name + price), which can
@@ -127,6 +141,7 @@ export default function QuotesPage() {
       });
       notify.success('quoteSent');
       setNote('');
+      setRecommendations([]);
       selectBooking('');
     } catch (err) {
       notify.error(err, 'quote.create');
@@ -274,10 +289,10 @@ export default function QuotesPage() {
             <div className="mb-2 flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold tracking-wide text-[#0E5C5B] uppercase">
-                  {t('futureRepairs', { defaultValue: 'Notes' })}
+                  {t('notes', { defaultValue: 'Notes' })}
                 </p>
                 <p className="mt-1 text-sm text-[#5A6968]">
-                  {t('futureRepairsSubtitle', {
+                  {t('notesSubtitle', {
                     defaultValue: 'Optional notes or details to share with the customer.',
                   })}
                 </p>
@@ -293,13 +308,87 @@ export default function QuotesPage() {
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 maxLength={500}
-                placeholder={t('futureRepairPlaceholder', {
+                placeholder={t('notePlaceholder', {
                   defaultValue: 'Notes or details for the customer',
                 })}
-                aria-label={t('futureRepairs', { defaultValue: 'Notes' })}
+                aria-label={t('notes', { defaultValue: 'Notes' })}
                 className="h-10 w-full min-w-0 rounded-md border border-gray-200 px-3 text-xs text-gray-900 placeholder:text-gray-400 focus:border-[#0E5C5B] focus:ring-2 focus:ring-[#0E5C5B]/10 focus:outline-none"
               />
             </div>
+          </div>
+
+          {/* Future repairs / recommendations: on screen only, not sent with the quote */}
+          <div className="mt-5 rounded-xl border border-[#CFE2DF] bg-[#F7FBFA] p-4">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold tracking-wide text-[#0E5C5B] uppercase">
+                  {t('futureRepairs', { defaultValue: 'Future repairs or recommendations' })}
+                </p>
+                <p className="mt-1 text-sm text-[#5A6968]">
+                  {t('futureRepairsSubtitle', {
+                    defaultValue: 'Optional suggestions to share with the customer.',
+                  })}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#0E5C5B]">
+                {t('optional', { defaultValue: 'Optional' })}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {recommendations.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 rounded-lg border border-[#D9E7E5] bg-white p-2.5"
+                >
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={(event) =>
+                      updateRecommendation(item.id, 'description', event.target.value)
+                    }
+                    placeholder={t('futureRepairPlaceholder', {
+                      defaultValue: 'Recommended repair or suggestion',
+                    })}
+                    className="h-10 min-w-0 flex-1 rounded-md border border-gray-200 px-3 text-xs text-gray-900 placeholder:text-gray-400 focus:border-[#0E5C5B] focus:ring-2 focus:ring-[#0E5C5B]/10 focus:outline-none"
+                  />
+                  <div className="flex h-10 w-36 shrink-0 items-center rounded-md border border-gray-200 focus-within:border-[#0E5C5B] focus-within:ring-2 focus-within:ring-[#0E5C5B]/10 sm:w-44">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={item.remainingKm}
+                      onChange={(event) =>
+                        updateRecommendation(item.id, 'remainingKm', event.target.value)
+                      }
+                      placeholder={t('remainingKmPlaceholder', { defaultValue: 'Remaining km' })}
+                      className="h-full w-full min-w-0 bg-transparent px-3 text-center text-xs text-gray-900 placeholder:text-center placeholder:text-gray-400 focus:outline-none"
+                    />
+                    <span className="pe-3 text-xs text-gray-400">
+                      {t('km', { defaultValue: 'km' })}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeRecommendation(item.id)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    aria-label={t('removeFutureRepair', { defaultValue: 'Remove suggestion' })}
+                    title={t('removeFutureRepair', { defaultValue: 'Remove suggestion' })}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={addRecommendation}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[#8FB9B4] bg-white px-3.5 py-2 text-sm font-semibold text-[#0E5C5B] transition-colors hover:border-[#0E5C5B] hover:bg-[#EDF7F5]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t('addFutureRepair', { defaultValue: 'Add recommendation' })}
+            </button>
           </div>
 
           {/* Customer promo code / voucher for the chosen booking (already accepted: quotes are

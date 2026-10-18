@@ -69,10 +69,6 @@
     "modal": {
       "title": "تفعيل الانشغال"
     },
-    "fields": {
-      "startAt": "يبدأ في",
-      "endAt": "ينتهي في"
-    },
     "units": {
       "hour": "ساعة",
       "hours": "ساعات"
@@ -82,7 +78,8 @@
       "delete": "إزالة وقت الانشغال"
     },
     "saving": "جارٍ الحفظ…",
-    "emptyDescription": "يمكن للعملاء الحجز في أي وقت خلال ساعات العمل."
+    "emptyDescription": "يمكن للعملاء الحجز في أي وقت خلال ساعات العمل.",
+    "summary": "مشغول"
   },
   "offers": {
     "title": "العروض",
@@ -105,9 +102,9 @@
       "selectService": "اختر خدمة",
       "selectAllServices": "تطبيق على كل الخدمات",
       "discountPercentage": "نسبة الخصم",
-      "startAt": "يبدأ في",
-      "endAt": "ينتهي في",
-      "selectAllServicesHint": "يُطبَّق الخصم على كل خدمات الورشة."
+      "selectAllServicesHint": "يُطبَّق الخصم على كل خدمات الورشة.",
+      "howLong": "مدة العرض؟",
+      "runs": "مدة العرض"
     },
     "actions": {
       "cancel": "إلغاء",
