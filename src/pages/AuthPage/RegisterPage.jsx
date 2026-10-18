@@ -8,6 +8,23 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import FormHookInput from '../../components/ui/FormHookInput';
 import { useNotify } from '../../hooks/useNotify';
+import { useErrorMessage } from '../../hooks/useErrorMessage';
+import { ERROR_CODES, createLocalError } from '../../API/errors';
+import { fieldsFromApiError } from '../../utils/formServerErrors';
+
+// The names/words the backend may use for each form field (lowercase).
+const SERVER_FIELDS = {
+  name: ['name', 'workshopname', 'fullname'],
+  email: ['email'],
+  phone: ['phone', 'phonenumber', 'mobile'],
+  address: ['address'],
+  password: ['password'],
+};
+// Fields with an "already used by another account" message (errors.json register.*.taken).
+const CAN_BE_TAKEN = ['email', 'phone'];
+
+// A field with an error is highlighted even when the rule has no message (the password hint).
+const fieldError = (error) => (error ? error.message || true : undefined);
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -16,6 +33,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const notify = useNotify();
+  const { getErrorMessage } = useErrorMessage();
   // Stays on screen (with a link to login) until the admin verifies the account.
   const [pendingVerification, setPendingVerification] = useState(false);
   const { lang = 'en' } = useParams();
@@ -23,6 +41,7 @@ export default function RegisterPage() {
   const {
     register: registerField,
     handleSubmit,
+    setError: setFieldError,
     formState: { errors, isSubmitting },
   } = useForm({
     mode: 'onChange',
@@ -61,7 +80,25 @@ export default function RegisterPage() {
       notify.success('registered');
       navigate(`/${lang}/`, { replace: true });
     } catch (err) {
-      notify.error(err, 'auth.register');
+      // A rejected request (400/422/409) highlights the fields it is about.
+      const fields = [ERROR_CODES.validation, ERROR_CODES.conflict].includes(err.code)
+        ? fieldsFromApiError(err, SERVER_FIELDS)
+        : [];
+
+      if (fields.length === 0) {
+        notify.error(err, 'auth.register');
+        return;
+      }
+
+      fields.forEach(({ field, reason }, index) => {
+        const key = `register.${field}.${reason === 'taken' && CAN_BE_TAKEN.includes(field) ? 'taken' : 'invalid'}`;
+        setFieldError(
+          field,
+          { type: 'server', message: getErrorMessage(createLocalError(key)) },
+          { shouldFocus: index === 0 }
+        );
+      });
+      notify.error(createLocalError('register.fieldsInvalid'));
     }
   };
 
@@ -94,7 +131,7 @@ export default function RegisterPage() {
             type="text"
             label={t('register.name', { defaultValue: 'Full name' })}
             autoComplete="name"
-            error={errors.name?.message}
+            error={fieldError(errors.name)}
             register={registerField}
             name="name"
             rules={{ required: 'Name is required' }}
@@ -105,7 +142,7 @@ export default function RegisterPage() {
             type="email"
             label={t('register.email', { defaultValue: 'Email address' })}
             autoComplete="email"
-            error={errors.email?.message}
+            error={fieldError(errors.email)}
             register={registerField}
             name="email"
             rules={{ required: 'Email is required' }}
@@ -116,7 +153,7 @@ export default function RegisterPage() {
             type="tel"
             label="Phone"
             autoComplete="tel"
-            error={errors.phone?.message}
+            error={fieldError(errors.phone)}
             register={registerField}
             name="phone"
             rules={{
@@ -134,7 +171,7 @@ export default function RegisterPage() {
             type="text"
             label="Address"
             autoComplete="street-address"
-            error={errors.address?.message}
+            error={fieldError(errors.address)}
             register={registerField}
             name="address"
             rules={{ required: 'Address is required' }}
@@ -146,7 +183,7 @@ export default function RegisterPage() {
               type={showPassword ? 'text' : 'password'}
               label={t('register.password', { defaultValue: 'Password ' })}
               autoComplete="new-password"
-              error={errors.password?.message}
+              error={fieldError(errors.password)}
               className="pe-16"
               register={registerField}
               name="password"
@@ -179,7 +216,7 @@ export default function RegisterPage() {
               type={showPassword ? 'text' : 'password'}
               label={t('register.confirmPassword', { defaultValue: 'Confirm password' })}
               autoComplete="new-password"
-              error={errors.confirmPassword?.message}
+              error={fieldError(errors.confirmPassword)}
               className="pe-16"
               register={registerField}
               name="confirmPassword"

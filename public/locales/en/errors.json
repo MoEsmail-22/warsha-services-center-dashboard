@@ -16,6 +16,26 @@
     "sessionInvalid": "Your session is no longer valid. Please sign in again.",
     "invalidOtp": "The code is incorrect or has expired."
   },
+  "register": {
+    "fieldsInvalid": "Some details were rejected. Check the highlighted fields.",
+    "name": {
+      "invalid": "Check the workshop name."
+    },
+    "email": {
+      "invalid": "Enter a valid email address.",
+      "taken": "An account with this email already exists."
+    },
+    "phone": {
+      "invalid": "Enter a valid mobile number (e.g. 01012345678).",
+      "taken": "This phone number is already used by another account."
+    },
+    "address": {
+      "invalid": "Check the address."
+    },
+    "password": {
+      "invalid": "The password doesn't meet the requirements below."
+    }
+  },
   "form": {
     "invalidStart": "Enter a valid start date and time.",
     "invalidEnd": "Enter a valid end date and time.",

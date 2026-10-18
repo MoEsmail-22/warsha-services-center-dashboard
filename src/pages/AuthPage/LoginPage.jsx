@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -11,6 +11,14 @@ import { forgotPassword } from '../../API/Auth/ForgotPassword';
 import { useNotify } from '../../hooks/useNotify';
 import { useErrorMessage } from '../../hooks/useErrorMessage';
 import { findKnownBackendError } from '../../utils/knownBackendErrors';
+import { ERROR_CODES, createLocalError } from '../../API/errors';
+
+// Answers to a login request that mean the email/password pair was not accepted.
+const CREDENTIAL_ERROR_CODES = [
+  ERROR_CODES.unauthorized,
+  ERROR_CODES.validation,
+  ERROR_CODES.notFound,
+];
 
 export default function LoginPage() {
   const { login, loginAsDemo } = useAuth();
@@ -23,6 +31,8 @@ export default function LoginPage() {
   const notify = useNotify();
   const { getErrorMessage } = useErrorMessage();
   const [forgotLoading, setForgotLoading] = useState(false);
+  // Shown inside the form, with both fields highlighted, when the credentials are wrong.
+  const [credentialsError, setCredentialsError] = useState('');
   const { lang = 'en' } = useParams();
 
   const {
@@ -70,21 +80,30 @@ export default function LoginPage() {
     }
   };
 
+  // Typing in either field hides the "wrong email or password" state.
+  const clearCredentialsError = () => setCredentialsError('');
+
   const onSubmit = async (formData) => {
     clearErrors(['email', 'password']);
+    setCredentialsError('');
     try {
       await login(formData);
       navigate(from, { replace: true });
     } catch (err) {
-      const message = getErrorMessage(err, 'auth.login');
       const knownError = findKnownBackendError(err.details)?.key;
 
-      // Wrong credentials belong next to the fields; anything else is a toast.
-      if (knownError === 'auth.invalidCredentials') {
-        setFieldError('email', { type: 'server', message });
-        setFieldError('password', { type: 'server', message });
-      } else if (knownError === 'auth.userNotFound') {
-        setFieldError('email', { type: 'server', message });
+      // Wrong credentials belong in the form; anything else (offline, server down) is a toast.
+      if (knownError === 'auth.userNotFound') {
+        setFieldError('email', { type: 'server', message: getErrorMessage(err, 'auth.login') });
+      } else if (
+        knownError === 'auth.invalidCredentials' ||
+        CREDENTIAL_ERROR_CODES.includes(err.code)
+      ) {
+        setCredentialsError(
+          getErrorMessage(
+            createLocalError('auth.invalidCredentials', 'The email or password is incorrect.')
+          )
+        );
       } else {
         notify.error(err, 'auth.login');
       }
@@ -104,16 +123,26 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {credentialsError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{credentialsError}</span>
+            </div>
+          )}
+
           <FormHookInput
             id="login-email"
             type="email"
             label={t('login.email', { defaultValue: 'Email address' })}
             autoComplete="email"
             placeholder="you@example.com"
-            error={errors.email?.message}
+            error={errors.email?.message || Boolean(credentialsError)}
             register={registerField}
             name="email"
-            rules={{ required: t('login.emailRequired') }}
+            rules={{ required: t('login.emailRequired'), onChange: clearCredentialsError }}
           />
 
           <div className="relative">
@@ -123,11 +152,11 @@ export default function LoginPage() {
               label={t('login.password', { defaultValue: 'Password' })}
               autoComplete="current-password"
               placeholder="••••••••"
-              error={errors.password?.message}
+              error={errors.password?.message || Boolean(credentialsError)}
               className="pe-16"
               register={registerField}
               name="password"
-              rules={{ required: t('login.passwordRequired') }}
+              rules={{ required: t('login.passwordRequired'), onChange: clearCredentialsError }}
             />
             <div className="absolute end-2 top-8">
               <button
