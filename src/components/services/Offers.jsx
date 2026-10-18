@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/widgets/EmptyState';
 import {
   Button,
   Card,
+  createTimeRange,
+  DAY,
   Input,
   LoadingScreen,
   Modal,
@@ -21,23 +23,28 @@ import {
   TD,
   TH,
   THead,
+  TimeRangePicker,
+  timeRangeOf,
   Toggle,
   TR,
+  WEEK,
 } from '@/components/ui';
 import { createOffer, deleteOffer, getOffers } from '@/API/offersApi';
 
-const EMPTY_FORM = {
+// period: a TimeRangePicker value, turned into startAt / endAt when saving.
+const newOfferForm = () => ({
   serviceId: '',
   allServices: false,
   discountPercentage: '',
-  startAt: '',
-  endAt: '',
-};
+  period: createTimeRange({ duration: WEEK, customEndIn: WEEK }),
+});
+// Quick lengths for the "How long does it run?" buttons.
+const OFFER_PRESETS = [DAY, 3 * DAY, WEEK, 2 * WEEK, 'month'];
 
 // Same header style as the Busy Mode table below
 const HEADER_CLASS = 'px-3 py-3 text-start text-xs font-semibold whitespace-nowrap text-[#5A6968]';
 
-/** "7 Oct 2026" on top, "10:00" underneath — keeps the date columns narrow. */
+/** "7 Oct 2026" on top, "10:00 am" underneath — keeps the date columns narrow. */
 function formatDate(value, language) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return { date: '—', time: '' };
@@ -46,7 +53,11 @@ function formatDate(value, language) {
 
   return {
     date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date),
-    time: new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(date),
+    time: new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date),
   };
 }
 
@@ -76,7 +87,7 @@ export default function Offers() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(newOfferForm);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -94,9 +105,7 @@ export default function Offers() {
     (form.allServices || form.serviceId !== '') &&
     Number(form.discountPercentage) > 0 &&
     Number(form.discountPercentage) <= 100 &&
-    form.startAt !== '' &&
-    form.endAt !== '' &&
-    new Date(form.endAt) > new Date(form.startAt);
+    Boolean(timeRangeOf(form.period)?.end);
 
   const loadOffers = useCallback(async () => {
     setLoading(true);
@@ -149,7 +158,7 @@ export default function Offers() {
   const closeModal = () => {
     if (saving) return;
     setModalOpen(false);
-    setForm(EMPTY_FORM);
+    setForm(newOfferForm());
   };
 
   const addOffer = async (event) => {
@@ -159,9 +168,11 @@ export default function Offers() {
     setSaving(true);
 
     try {
-      await createOffer(form);
+      // "Now" means the moment of saving.
+      const { start, end } = timeRangeOf(form.period);
+      await createOffer({ ...form, startAt: start, endAt: end });
       setModalOpen(false);
-      setForm(EMPTY_FORM);
+      setForm(newOfferForm());
       notify.success('offerCreated');
       // Reload so the new offer shows with its backend ID.
       await loadOffers();
@@ -203,7 +214,13 @@ export default function Offers() {
             {offerText('subtitle', 'Manage service discounts and offer dates.')}
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="gap-2 self-start sm:self-auto">
+        <Button
+          onClick={() => {
+            setForm(newOfferForm());
+            setModalOpen(true);
+          }}
+          className="gap-2 self-start sm:self-auto"
+        >
           <Plus className="h-4 w-4" />
           {offerText('addOffer', 'Add offer')}
         </Button>
@@ -372,23 +389,16 @@ export default function Offers() {
             onChange={(event) => updateField('discountPercentage', event.target.value)}
             required
           />
-          <Input
-            id="offer-start-at"
-            type="datetime-local"
-            label={offerText('fields.startAt', 'Starts at')}
-            value={form.startAt}
-            onChange={(event) => updateField('startAt', event.target.value)}
-            required
-          />
-          <Input
-            id="offer-end-at"
-            type="datetime-local"
-            min={form.startAt || undefined}
-            label={offerText('fields.endAt', 'Ends at')}
-            value={form.endAt}
-            onChange={(event) => updateField('endAt', event.target.value)}
-            required
-          />
+          <div className="sm:col-span-2">
+            <TimeRangePicker
+              id="offer"
+              value={form.period}
+              onChange={(period) => updateField('period', period)}
+              presets={OFFER_PRESETS}
+              durationLabel={offerText('fields.howLong', 'How long does it run?')}
+              summaryLabel={offerText('fields.runs', 'Offer runs')}
+            />
+          </div>
           {!hasServices && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:col-span-2">
               {offerText('noServices', 'Add a service first to create an offer.')}

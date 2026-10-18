@@ -160,5 +160,28 @@
     "success": "Success",
     "error": "Something went wrong",
     "notification": "New notification"
+  },
+  "timeRange": {
+    "starts": "Starts",
+    "now": "Now",
+    "later": "Later",
+    "date": "Date",
+    "time": "Time",
+    "howLong": "For how long?",
+    "endDate": "Until date",
+    "endTime": "Until time",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "weeks_one": "{{count}} week",
+    "weeks_other": "{{count}} weeks",
+    "month": "1 month",
+    "restOfDay": "Rest of the day",
+    "custom": "Custom",
+    "summary": "From",
+    "invalidRange": "Choose an end time after the start time."
   }
 }

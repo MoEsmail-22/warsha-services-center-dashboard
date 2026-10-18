@@ -10,3 +10,4 @@ export { default as Drawer } from './Drawer';
 export { Table, THead, TBody, TR, TH, TD } from './Table';
 export { Spinner } from './Spinner';
 export { LoadingScreen } from './LoadingScreen';
+export { TimeRangePicker, createTimeRange, timeRangeOf, HOUR, DAY, WEEK } from './TimeRangePicker';

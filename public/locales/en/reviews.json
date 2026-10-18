@@ -31,5 +31,11 @@
     "cancel": "Cancel",
     "send": "Send reply",
     "update": "Update reply"
-  }
+  },
+  "tabs": {
+    "label": "Review type",
+    "workshop": "Workshop",
+    "service": "Services"
+  },
+  "retry": "Try again"
 }

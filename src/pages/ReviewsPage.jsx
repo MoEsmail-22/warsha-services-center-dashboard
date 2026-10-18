@@ -1,7 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MessageSquareText } from 'lucide-react';
 import { useReviews } from '@/contexts';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
+import { useErrorMessage } from '@/hooks/useErrorMessage';
+import { PAGE_SIZE_OPTIONS, usePaginationParams } from '@/hooks/usePaginationParams';
+import { REVIEW_TYPES } from '@/API/reviewsApi';
 import { Button, Card, Modal } from '@/components/ui';
 import Avatar from '@/components/ui/Avatar';
 import RatingStars from '@/components/widgets/RatingStars';
@@ -9,7 +13,11 @@ import EmptyState from '@/components/widgets/EmptyState';
 import Pagination from '@/components/widgets/Pagination';
 
 const AVATAR_COLORS = ['#C8730A', '#E08B2F', '#B45F14', '#8A8074', '#A89A8A', '#7D7166'];
-const REVIEWS_PAGE_SIZE = 3;
+// Tabs: ?type=workshop (default) or ?type=service.
+const TABS = [
+  { key: 'workshop', type: REVIEW_TYPES.workshop },
+  { key: 'service', type: REVIEW_TYPES.service },
+];
 
 function getInitials(name = '') {
   return name
@@ -35,11 +43,33 @@ function getRelativeTime(date, t) {
 
 export default function ReviewsPage() {
   const { t } = useAppTranslation('reviews');
-  const { data: reviews, loading, replyReview } = useReviews();
+  const { getErrorMessage } = useErrorMessage();
+  const { lists, loadReviews, replyReview } = useReviews();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = TABS.find((item) => item.key === searchParams.get('type')) ?? TABS[0];
+  const { page, pageSize, setPage, setPageSize } = usePaginationParams();
+  const selectTab = (key) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set('type', key);
+        next.delete('page');
+        return next;
+      },
+      { replace: true }
+    );
+
+  const { items: reviews, loading: listLoading, loaded, error } = lists[tab.type];
+  const loading = listLoading || !loaded;
+
+  // Each tab loads the first time it's opened.
+  useEffect(() => {
+    if (!loaded && !listLoading) loadReviews(tab.type);
+  }, [tab.type, loaded, listLoading, loadReviews]);
 
   const [selectedReview, setSelectedReview] = useState(null);
   const [replyText, setReplyText] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
 
   const averageRating = useMemo(() => {
     if (!reviews.length) return 0;
@@ -57,12 +87,9 @@ export default function ReviewsPage() {
   );
 
   const largestRatingCount = Math.max(...ratingBreakdown.map((item) => item.count), 1);
-  const totalPages = Math.max(1, Math.ceil(reviews.length / REVIEWS_PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedReviews = reviews.slice(
-    (safePage - 1) * REVIEWS_PAGE_SIZE,
-    safePage * REVIEWS_PAGE_SIZE
-  );
+  const totalPages = Math.max(1, Math.ceil(reviews.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginatedReviews = reviews.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const openReplyModal = (review) => {
     setSelectedReview(review);
@@ -79,7 +106,7 @@ export default function ReviewsPage() {
 
     if (!selectedReview || !replyText.trim()) return;
 
-    replyReview(selectedReview.id, replyText.trim());
+    replyReview(tab.type, selectedReview.id, replyText.trim());
     closeReplyModal();
   };
 
@@ -99,6 +126,31 @@ export default function ReviewsPage() {
             count: reviews.length,
           })}
         </p>
+
+        <div
+          role="tablist"
+          aria-label={t('tabs.label', { defaultValue: 'Review type' })}
+          className="mt-4 inline-flex rounded-lg border border-[#E8E2D8] bg-white p-1"
+        >
+          {TABS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={tab.key === item.key}
+              onClick={() => selectTab(item.key)}
+              className={`rounded-md px-4 py-1.5 text-sm font-semibold transition-colors ${
+                tab.key === item.key
+                  ? 'bg-[#0E5C5B] text-white'
+                  : 'text-[#5A6968] hover:bg-[#F6F3EE] hover:text-[#15201F]'
+              }`}
+            >
+              {item.key === 'workshop'
+                ? t('tabs.workshop', { defaultValue: 'Workshop' })
+                : t('tabs.service', { defaultValue: 'Services' })}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
@@ -109,6 +161,18 @@ export default function ReviewsPage() {
 
           {loading ? (
             <div className="px-5 py-12 text-center text-sm text-gray-500">{t('loading')}</div>
+          ) : error ? (
+            <div className="px-5 py-12 text-center">
+              <p className="text-sm text-red-600">{getErrorMessage(error, 'reviews.load')}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => loadReviews(tab.type)}
+              >
+                {t('retry', { defaultValue: 'Try again' })}
+              </Button>
+            </div>
           ) : reviews.length === 0 ? (
             <EmptyState
               icon={<MessageSquareText size={24} />}
@@ -118,9 +182,7 @@ export default function ReviewsPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {paginatedReviews.map((review, index) => {
-                const customerName = review.customerId
-                  ? `Customer ${review.customerId.replace('C-', '#')}`
-                  : t('unknownCustomer');
+                const customerName = review.customerName || t('unknownCustomer');
                 const initials = getInitials(customerName);
 
                 return (
@@ -132,15 +194,26 @@ export default function ReviewsPage() {
                           name={customerName}
                           color={AVATAR_COLORS[index % AVATAR_COLORS.length]}
                         />
-                        <p className="truncate text-sm font-semibold text-[#15201F]">
-                          {customerName}
-                        </p>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-[#15201F]">
+                            {customerName}
+                          </p>
+                          {(review.serviceName || review.bookingNumber) && (
+                            <p className="truncate text-xs text-[#5A6968]">
+                              {[review.serviceName, review.bookingNumber]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
                       <RatingStars rating={review.rating} size="sm" />
                     </div>
 
-                    <p className="mt-3 text-sm leading-6 text-[#5A6968]">{review.comment}</p>
+                    {review.comment && (
+                      <p className="mt-3 text-sm leading-6 text-[#5A6968]">{review.comment}</p>
+                    )}
 
                     {review.reply && (
                       <div className="mt-3 rounded-lg bg-teal-50 px-3 py-2 text-sm text-[#0E5C5B]">
@@ -150,7 +223,7 @@ export default function ReviewsPage() {
 
                     <div className="mt-2 flex items-center justify-between">
                       <span className="text-xs text-gray-400">
-                        {getRelativeTime(review.createdAt, t)}
+                        {review.createdAt ? getRelativeTime(review.createdAt, t) : ''}
                       </span>
 
                       <Button
@@ -168,12 +241,14 @@ export default function ReviewsPage() {
             </div>
           )}
 
-          {!loading && reviews.length > REVIEWS_PAGE_SIZE && (
+          {!loading && !error && reviews.length > 0 && (
             <Pagination
               currentPage={safePage}
               totalItems={reviews.length}
-              pageSize={REVIEWS_PAGE_SIZE}
-              onPageChange={setCurrentPage}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              onPageSizeChange={setPageSize}
               labels={{
                 showing: t('showing', { defaultValue: 'Showing' }),
                 of: t('of', { defaultValue: 'of' }),

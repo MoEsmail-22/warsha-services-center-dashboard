@@ -5,14 +5,27 @@ import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotify } from '@/hooks/useNotify';
-import { Button, Card, Input, Modal, Table, TBody, TD, TH, THead, TR } from '@/components/ui';
+import {
+  Button,
+  Card,
+  createTimeRange,
+  HOUR,
+  Modal,
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TimeRangePicker,
+  timeRangeOf,
+  TR,
+} from '@/components/ui';
 import { EmptyState } from '@/components/widgets/EmptyState';
 import { clearWorkshopBusy, setWorkshopBusy, toBusyPayload } from '@/API/busyApi';
 
-const EMPTY_FORM = {
-  startAt: '',
-  endAt: '',
-};
+// Quick lengths for the "For how long?" buttons.
+const BUSY_PRESETS = [30, HOUR, 2 * HOUR, 4 * HOUR, 'restOfDay'];
+const newBusyRange = () => createTimeRange({ duration: HOUR });
 const BUSY_TIMES_STORAGE_KEY = 'workshop_busy_times';
 
 function loadBusyTimes(storageKey) {
@@ -50,7 +63,12 @@ function formatDate(value, language) {
 
   return {
     date: new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(date),
-    time: new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(date),
+    // 12-hour with AM/PM (ص/م in Arabic), e.g. 1:23 AM.
+    time: new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date),
   };
 }
 
@@ -64,13 +82,12 @@ export default function BusyTime() {
   const busyText = (key, defaultValue) => t(`busyTime.${key}`, { defaultValue });
   const notify = useNotify();
   const [busyTimes, setBusyTimes] = useState(() => loadBusyTimes(storageKey));
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(newBusyRange);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState(null);
 
-  const isFormValid =
-    form.startAt !== '' && form.endAt !== '' && new Date(form.endAt) > new Date(form.startAt);
+  const isFormValid = Boolean(timeRangeOf(form)?.end);
 
   useEffect(() => {
     if (location.hash === '#busy-time') {
@@ -89,7 +106,7 @@ export default function BusyTime() {
   const closeModal = () => {
     if (saving) return;
     setModalOpen(false);
-    setForm(EMPTY_FORM);
+    setForm(newBusyRange());
   };
 
   const addBusyTime = async (event) => {
@@ -99,13 +116,16 @@ export default function BusyTime() {
     setSaving(true);
 
     try {
-      await setWorkshopBusy(form);
+      // "Now" means the moment of saving, not when the window was opened.
+      const { start, end } = timeRangeOf(form);
+      const period = { startAt: start, endAt: end };
+      await setWorkshopBusy(period);
 
       // The API keeps one busy period per workshop and has no GET, so the table
       // holds a local copy of the latest one.
-      setBusyTimes([{ id: `${Date.now()}-${Math.random()}`, ...toBusyPayload(form) }]);
+      setBusyTimes([{ id: `${Date.now()}-${Math.random()}`, ...toBusyPayload(period) }]);
       setModalOpen(false);
-      setForm(EMPTY_FORM);
+      setForm(newBusyRange());
       notify.success('busySet');
     } catch (error) {
       // The dialog stays open so the user can fix the times and retry.
@@ -131,8 +151,9 @@ export default function BusyTime() {
     }
   };
 
-  const updateField = (field, value) => {
-    setForm((current) => ({ ...current, [field]: value }));
+  const openModal = () => {
+    setForm(newBusyRange());
+    setModalOpen(true);
   };
 
   return (
@@ -153,7 +174,7 @@ export default function BusyTime() {
             </p>
           </div>
         </div>
-        <Button onClick={() => setModalOpen(true)} className="gap-2 self-start sm:self-auto">
+        <Button onClick={openModal} className="gap-2 self-start sm:self-auto">
           <Plus className="h-4 w-4" />
           {busyText('add', 'Add busy time')}
         </Button>
@@ -261,23 +282,13 @@ export default function BusyTime() {
           </>
         }
       >
-        <form id="busy-time-form" onSubmit={addBusyTime} className="grid gap-4 sm:grid-cols-2">
-          <Input
-            id="busy-time-start-at"
-            type="datetime-local"
-            label={busyText('fields.startAt', 'Starts at')}
-            value={form.startAt}
-            onChange={(event) => updateField('startAt', event.target.value)}
-            required
-          />
-          <Input
-            id="busy-time-end-at"
-            type="datetime-local"
-            min={form.startAt || undefined}
-            label={busyText('fields.endAt', 'Ends at')}
-            value={form.endAt}
-            onChange={(event) => updateField('endAt', event.target.value)}
-            required
+        <form id="busy-time-form" onSubmit={addBusyTime}>
+          <TimeRangePicker
+            id="busy"
+            value={form}
+            onChange={setForm}
+            presets={BUSY_PRESETS}
+            summaryLabel={busyText('summary', 'Busy')}
           />
         </form>
       </Modal>
