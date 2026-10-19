@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createWorkshop } from '../API/Auth/Creat';
 import { loginUser } from '../API/Auth/Login';
+import { logoutWorkshop } from '../API/Auth/Logout';
 import { persistAuthTokens } from '../API/client';
 import { clearSessionAndReload } from '../utils/clearSession';
 
@@ -191,7 +192,16 @@ export function AuthProvider({ children }) {
 
   // Logging out clears everything saved for this account and reloads on the login page,
   // so the next account never sees the previous one's services, bookings or settings.
-  const logout = () => {
+  // The backend is told first (POST /Auth/workshop/logout) so the refresh token stops
+  // working; the browser is cleared anyway if that fails or takes more than 3 seconds.
+  const logout = async () => {
+    const refreshToken = localStorage.getItem('auth_refresh_token');
+    if (refreshToken && !isDemoMode()) {
+      await Promise.race([
+        logoutWorkshop(refreshToken).catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    }
     setUser(null);
     clearSessionAndReload();
   };
