@@ -5,8 +5,9 @@
  * `max` is the slowest the check gets after repeated server errors.
  */
 export const POLLING = {
-  notifications: { intervalMs: 10_000, maxIntervalMs: 120_000 },
-  bookings: { intervalMs: 10_000, maxIntervalMs: 120_000 },
+  // New booking requests have a 5-minute answer window, so they're checked every 3 s.
+  notifications: { intervalMs: 5_000, maxIntervalMs: 60_000 },
+  bookings: { intervalMs: 3_000, maxIntervalMs: 60_000 },
   // Quotes and the Jobs Board don't need to be instant.
   quotes: { intervalMs: 30_000, maxIntervalMs: 240_000 },
   jobs: { intervalMs: 30_000, maxIntervalMs: 240_000 },

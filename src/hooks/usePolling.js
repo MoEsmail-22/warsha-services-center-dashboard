@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
+import { backgroundTimeout, clearBackgroundTimeout } from '@/utils/workerTimer';
 
 /**
  * Runs `task` every `intervalMs` while `enabled`, with three safeguards:
  *   1. Pauses while the tab is hidden, and runs right away when it's shown again.
- *      `runWhenHidden: true` keeps it going in the background (for desktop notifications;
- *      browsers may slow background timers to about once a minute).
+ *      `runWhenHidden: true` keeps it going in the background (for desktop notifications),
+ *      timed by a Web Worker so the browser doesn't slow it to once a minute.
  *   2. Never starts a new run while the previous one is still waiting.
  *   3. Slows down after failures (×2 each time, up to `maxIntervalMs`) and goes
  *      back to normal after the next success.
@@ -27,9 +28,13 @@ export function usePolling(
     let delay = intervalMs;
     let stopped = false;
 
+    // Background checks use a worker timer, which the browser doesn't slow down in hidden tabs.
+    const startTimer = runWhenHidden ? backgroundTimeout : setTimeout;
+    const stopTimer = runWhenHidden ? clearBackgroundTimeout : clearTimeout;
+
     const schedule = () => {
-      clearTimeout(timer);
-      if (!stopped) timer = setTimeout(run, delay);
+      stopTimer(timer);
+      if (!stopped) timer = startTimer(run, delay);
     };
 
     const run = async () => {
@@ -54,7 +59,7 @@ export function usePolling(
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       stopped = true;
-      clearTimeout(timer);
+      stopTimer(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [enabled, intervalMs, maxIntervalMs, runWhenHidden]);

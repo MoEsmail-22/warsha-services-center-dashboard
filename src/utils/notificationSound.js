@@ -12,22 +12,32 @@ export const SOUND_STORAGE_KEY = 'warcha_sound';
 export const SOUND_SETTING_CHANGED = 'warcha-sound:changed';
 
 // Notes for each chime: [frequency in Hz, start in seconds].
+const RING = [
+  [523.25, 0], // C5
+  [659.25, 0.15], // E5
+  [783.99, 0.3], // G5
+  [1046.5, 0.45], // C6
+];
 const CHIMES = {
-  // Two soft notes for a notification.
+  // Two notes for a notification.
   notification: [
     [659.25, 0], // E5
-    [880, 0.14], // A5
+    [880, 0.16], // A5
+    [1318.5, 0.32], // E6
   ],
-  // Three rising notes for a new booking: easier to notice.
-  booking: [
-    [523.25, 0], // C5
-    [659.25, 0.13], // E5
-    [783.99, 0.26], // G5
-  ],
+  // A new booking rings twice, 1.5 s apart: it has to be answered within 5 minutes.
+  booking: [0, 1.5].flatMap((repeat) =>
+    RING.map(([frequency, offset]) => [frequency, repeat + offset])
+  ),
+};
+// How loud (0–1) and how long each note rings, in seconds.
+const STYLE = {
+  notification: { volume: 0.6, length: 0.6 },
+  booking: { volume: 0.9, length: 0.7 },
 };
 
 let audioContext = null;
-let lastPlayedAt = 0;
+const lastPlayedAt = { notification: 0, booking: 0 };
 
 function getAudioContext() {
   if (audioContext) return audioContext;
@@ -68,29 +78,48 @@ export function setSoundEnabled(enabled) {
 }
 
 /**
- * Plays the chime for 'notification' or 'booking'. Does nothing when sound is off, before
- * the first click, or if a chime played less than 2 s ago (a new booking and its
- * notification usually arrive together: one sound is enough).
+ * Plays the chime for 'notification' or 'booking'. Does nothing when sound is off or before
+ * the first click. A new booking and its notification usually arrive together, so the
+ * booking ring wins: the notification chime is skipped while a booking is ringing.
  */
 export function playChime(kind = 'notification', { force = false } = {}) {
   if (!force && !isSoundEnabled()) return;
   const context = getAudioContext();
   if (!context || context.state !== 'running') return;
-  if (!force && Date.now() - lastPlayedAt < 2000) return;
-  lastPlayedAt = Date.now();
+
+  const now = Date.now();
+  if (!force) {
+    if (now - lastPlayedAt.booking < 3500) return; // a booking is (still) ringing
+    if (kind === 'notification' && now - lastPlayedAt.notification < 2000) return;
+  }
+  lastPlayedAt[kind === 'booking' ? 'booking' : 'notification'] = now;
+
+  const { volume, length } = STYLE[kind] ?? STYLE.notification;
+  // Overlapping notes are evened out by a compressor, so the loud ring doesn't crackle.
+  const output = context.createDynamicsCompressor();
+  output.threshold.value = -6;
+  output.knee.value = 6;
+  output.ratio.value = 8;
+  output.connect(context.destination);
 
   const start = context.currentTime;
   for (const [frequency, offset] of CHIMES[kind] ?? CHIMES.notification) {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.value = frequency;
-    // Quick fade in, gentle fade out: a soft "ding" instead of a beep.
-    gain.gain.setValueAtTime(0.0001, start + offset);
-    gain.gain.exponentialRampToValueAtTime(0.25, start + offset + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.45);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start(start + offset);
-    oscillator.stop(start + offset + 0.5);
+    // A sine plus a quieter triangle an octave up: fuller and easier to hear than a plain sine.
+    [
+      ['sine', frequency, volume],
+      ['triangle', frequency * 2, volume * 0.35],
+    ].forEach(([type, pitch, peak]) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = type;
+      oscillator.frequency.value = pitch;
+      // Quick fade in, then a ring that fades out.
+      gain.gain.setValueAtTime(0.0001, start + offset);
+      gain.gain.exponentialRampToValueAtTime(peak, start + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + length);
+      oscillator.connect(gain).connect(output);
+      oscillator.start(start + offset);
+      oscillator.stop(start + offset + length + 0.05);
+    });
   }
 }
