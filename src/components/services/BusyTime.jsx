@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Clock3, Plus, Trash2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
@@ -10,6 +10,7 @@ import {
   Card,
   createTimeRange,
   HOUR,
+  LoadingScreen,
   Modal,
   Table,
   TBody,
@@ -21,41 +22,14 @@ import {
   TR,
 } from '@/components/ui';
 import { EmptyState } from '@/components/widgets/EmptyState';
-import { clearWorkshopBusy, setWorkshopBusy, toBusyPayload } from '@/API/busyApi';
+import { useErrorMessage } from '@/hooks/useErrorMessage';
+import { clearWorkshopBusy, getWorkshopBusy, setWorkshopBusy } from '@/API/busyApi';
 
 // Quick lengths for the "For how long?" buttons.
 const BUSY_PRESETS = [30, HOUR, 2 * HOUR, 4 * HOUR, 'restOfDay'];
 const newBusyRange = () => createTimeRange({ duration: HOUR });
-const BUSY_TIMES_STORAGE_KEY = 'workshop_busy_times';
-
-function loadBusyTimes(storageKey) {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    if (!Array.isArray(saved)) return [];
-
-    return saved
-      .map((item) => {
-        // Older entries stored a start time plus a duration in hours.
-        if (item?.startAt && item?.durationHours) {
-          const start = new Date(item.startAt);
-          return {
-            id: item.id,
-            busyFrom: start.toISOString(),
-            busyUntil: new Date(start.getTime() + item.durationHours * 3600000).toISOString(),
-          };
-        }
-        return item;
-      })
-      .filter(
-        (item) =>
-          item &&
-          typeof item.id === 'string' &&
-          Date.parse(item.busyUntil) > Date.parse(item.busyFrom)
-      );
-  } catch {
-    return [];
-  }
-}
+// Older versions kept a copy of the busy period in the browser; it's removed on load.
+const OLD_STORAGE_KEY = 'workshop_busy_times';
 
 function formatDate(value, language) {
   const date = new Date(value);
@@ -77,11 +51,13 @@ export default function BusyTime() {
   const { isRTL, lang } = useLanguage();
   const { user } = useAuth();
   const location = useLocation();
-  const workshopKey = user?.workshopId ?? user?.id ?? user?.userId ?? user?.email ?? 'unknown';
-  const storageKey = `${BUSY_TIMES_STORAGE_KEY}:${workshopKey}`;
   const busyText = (key, defaultValue) => t(`busyTime.${key}`, { defaultValue });
   const notify = useNotify();
-  const [busyTimes, setBusyTimes] = useState(() => loadBusyTimes(storageKey));
+  const { getErrorMessage } = useErrorMessage();
+  // GET /Workshop/busy: the current busy period (an empty list when not busy).
+  const [busyTimes, setBusyTimes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [form, setForm] = useState(newBusyRange);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -95,13 +71,30 @@ export default function BusyTime() {
     }
   }, [location.hash]);
 
-  useEffect(() => {
+  // silent: refresh after saving or removing, without the loading state.
+  const loadBusyTimes = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    setLoadError(null);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(busyTimes));
-    } catch {
-      // Keep the table usable when browser storage is unavailable.
+      setBusyTimes(await getWorkshopBusy());
+    } catch (error) {
+      if (!silent) setLoadError(error);
+    } finally {
+      setLoading(false);
     }
-  }, [busyTimes, storageKey]);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    loadBusyTimes();
+    try {
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(OLD_STORAGE_KEY))
+        .forEach((key) => localStorage.removeItem(key));
+    } catch {
+      // Storage unavailable: nothing to clean up.
+    }
+  }, [user, loadBusyTimes]);
 
   const closeModal = () => {
     if (saving) return;
@@ -120,13 +113,10 @@ export default function BusyTime() {
       const { start, end } = timeRangeOf(form);
       const period = { startAt: start, endAt: end };
       await setWorkshopBusy(period);
-
-      // The API keeps one busy period per workshop and has no GET, so the table
-      // holds a local copy of the latest one.
-      setBusyTimes([{ id: `${Date.now()}-${Math.random()}`, ...toBusyPayload(period) }]);
       setModalOpen(false);
       setForm(newBusyRange());
       notify.success('busySet');
+      await loadBusyTimes({ silent: true });
     } catch (error) {
       // The dialog stays open so the user can fix the times and retry.
       notify.error(error, 'busy.set');
@@ -144,6 +134,7 @@ export default function BusyTime() {
       await clearWorkshopBusy();
       setBusyTimes((current) => current.filter((item) => item.id !== id));
       notify.success('busyRemoved');
+      await loadBusyTimes({ silent: true });
     } catch (error) {
       notify.error(error, 'busy.remove');
     } finally {
@@ -200,7 +191,29 @@ export default function BusyTime() {
               </TR>
             </THead>
             <TBody>
-              {busyTimes.length === 0 ? (
+              {loading ? (
+                <TR>
+                  <TD colSpan={4}>
+                    <LoadingScreen variant="section" />
+                  </TD>
+                </TR>
+              ) : loadError ? (
+                <TR>
+                  <TD colSpan={4} className="py-10 text-center">
+                    <p className="text-sm text-red-600">
+                      {getErrorMessage(loadError, 'busy.load')}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => loadBusyTimes()}
+                    >
+                      {busyText('retry', 'Try again')}
+                    </Button>
+                  </TD>
+                </TR>
+              ) : busyTimes.length === 0 ? (
                 <TR>
                   <TD colSpan={4}>
                     <EmptyState

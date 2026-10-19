@@ -2,21 +2,41 @@ import apiClient from './client';
 import { assertApiSuccess, handleApiError } from './errors';
 import { logError, logResponse } from './devLog';
 
-// Flags the API may use to mark a brand the workshop already services.
-const SELECTED_FLAGS = ['isSelected', 'selected', 'isSupported', 'isWorkshopBrand', 'isAdded'];
-
-/**
- * One brand from the API → { id, name, icon, selected }. A few field names are accepted until
- * the response is confirmed. selected is null when the response doesn't say.
- */
+/** One brand from the API → { id, name, icon }. A few field names are accepted until the response is confirmed. */
 export function normalizeCarBrand(brand) {
-  const flag = SELECTED_FLAGS.find((key) => typeof brand[key] === 'boolean');
   return {
     id: brand.id ?? brand.carBrandId ?? brand.brandId,
     name: brand.name ?? brand.nameEn ?? brand.brandName ?? '',
     icon: brand.icon ?? brand.logo ?? brand.logoUrl ?? brand.iconUrl ?? brand.imageUrl ?? null,
-    selected: flag ? brand[flag] : null,
   };
+}
+
+/**
+ * One of the workshop's brands. Its id must be the catalog brand id (DELETE uses it), so
+ * carBrandId comes before id, which may be the link's own id; the brand may also be nested.
+ */
+function normalizeWorkshopCarBrand(item) {
+  const nested = item.carBrand ?? item.brand ?? {};
+  const brand = normalizeCarBrand({ ...nested, ...item });
+  return {
+    ...brand,
+    id: item.carBrandId ?? item.brandId ?? nested.id ?? item.id,
+    name: brand.name || nested.name || item.carBrandName || '',
+  };
+}
+
+/** The brands this workshop services: GET /Workshop/me/car-brands. */
+export async function getWorkshopCarBrands() {
+  try {
+    const response = await apiClient.get('/Workshop/me/car-brands');
+    logResponse('Car Brands API', 'GET workshop car brands', response);
+    const result = assertApiSuccess(response.data, 'Failed to load your car brands.');
+    const rows = [result?.data, result?.data?.items, result?.items, result].find(Array.isArray);
+    return (rows ?? []).map(normalizeWorkshopCarBrand).filter((brand) => brand.id != null);
+  } catch (error) {
+    logError('Car Brands API', 'GET workshop car brands', error);
+    return handleApiError(error, 'Load workshop car brands');
+  }
 }
 
 /** All car brands in the catalog (the list the workshop picks from). */

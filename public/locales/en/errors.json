@@ -56,6 +56,9 @@
     },
     "remove": {
       "server": "Busy time couldn't be removed right now. Please try again."
+    },
+    "load": {
+      "server": "Couldn't load your busy time. Please try again."
     }
   },
   "settings": {
@@ -124,6 +127,11 @@
   "reviews": {
     "load": {
       "server": "Could not load the reviews. Please try again."
+    }
+  },
+  "carBrand": {
+    "load": {
+      "server": "Couldn't load your car brands. Please try again."
     }
   }
 }
