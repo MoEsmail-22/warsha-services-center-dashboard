@@ -79,7 +79,8 @@
     },
     "saving": "Saving…",
     "emptyDescription": "Customers can book you anytime during your working hours.",
-    "summary": "Busy"
+    "summary": "Busy",
+    "retry": "Try again"
   },
   "offers": {
     "title": "Offers",

@@ -24,6 +24,48 @@ export function toBusyPayload({ startAt, endAt }) {
   };
 }
 
+/** One busy period from the API → { id, busyFrom, busyUntil } (ISO strings), or null if it has none. */
+function normalizeBusyPeriod(item, index = 0) {
+  if (!item || typeof item !== 'object') return null;
+  const from = item.busyFrom ?? item.startAt ?? item.from ?? item.start ?? item.busyStart;
+  const until = item.busyUntil ?? item.endAt ?? item.until ?? item.end ?? item.busyEnd;
+  const start = new Date(from);
+  const end = new Date(until);
+  if (!from || !until || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  if (end <= start) return null;
+  return {
+    id: String(item.id ?? `busy-${index}`),
+    busyFrom: start.toISOString(),
+    busyUntil: end.toISOString(),
+  };
+}
+
+/**
+ * The workshop's busy period(s), as a list (empty when not busy). Periods that have
+ * already ended are left out: the workshop isn't busy any more.
+ * The response format isn't documented, so a single object, a list or { items } all work.
+ */
+export async function getWorkshopBusy() {
+  try {
+    const response = await apiClient.get('/Workshop/busy');
+    const result = assertApiSuccess(response.data, 'Failed to load busy time.');
+    const data = result?.data !== undefined ? result.data : result;
+    const rows = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.items)
+        ? data.items
+        : data && typeof data === 'object'
+          ? [data]
+          : [];
+    const now = Date.now();
+    return rows
+      .map(normalizeBusyPeriod)
+      .filter((period) => period && Date.parse(period.busyUntil) > now);
+  } catch (error) {
+    return handleApiError(error, 'Load busy time');
+  }
+}
+
 export async function setWorkshopBusy(form) {
   try {
     const response = await apiClient.post('/Workshop/busy', toBusyPayload(form));

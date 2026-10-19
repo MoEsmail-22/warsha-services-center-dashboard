@@ -1,14 +1,34 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Car, Plus, Search, Trash2 } from 'lucide-react';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useNotify } from '@/hooks/useNotify';
+import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { addWorkshopCarBrand, getCarBrands, removeWorkshopCarBrand } from '@/API/carBrandsApi';
+import {
+  addWorkshopCarBrand,
+  getCarBrands,
+  getWorkshopCarBrands,
+  removeWorkshopCarBrand,
+} from '@/API/carBrandsApi';
 import { EmptyState } from '@/components/widgets/EmptyState';
-import { Button, Card, Input, Modal, Table, TBody, TD, TH, THead, TR } from '@/components/ui';
+import {
+  Button,
+  Card,
+  Input,
+  LoadingScreen,
+  Modal,
+  Table,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+} from '@/components/ui';
 
 const isImageUrl = (value) => typeof value === 'string' && /^(https?:)?\/\//.test(value);
+// Older versions kept a copy of the workshop's brands in the browser; it's removed on load.
+const OLD_STORAGE_KEY = 'workshop_vehicle_brands';
 
 export default function VehicleCatalogDemo() {
   const { t } = useAppTranslation('services');
@@ -17,29 +37,38 @@ export default function VehicleCatalogDemo() {
   const catalogText = (key, defaultValue, options) =>
     t(`vehicleCatalog.${key}`, { defaultValue, ...options });
 
-  // The API can add (POST) and remove (DELETE) the workshop's brands, but has no GET for
-  // them yet, so a copy of this account's list is kept in the browser.
   const { user } = useAuth();
-  const storageKey = `workshop_vehicle_brands:${user?.id ?? user?.userId ?? 'unknown'}`;
-  const [brands, setBrands] = useState(() => {
+  const { getErrorMessage } = useErrorMessage();
+
+  // GET /Workshop/me/car-brands: the brands this workshop services.
+  const [ownBrands, setOwnBrands] = useState([]);
+  const [brandsLoading, setBrandsLoading] = useState(true);
+  const [brandsError, setBrandsError] = useState(null);
+
+  // silent: refresh after adding or removing, without the loading state.
+  const loadBrands = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setBrandsLoading(true);
+    setBrandsError(null);
     try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      // Only brands added through the API (numeric catalog id); older browser-only entries are dropped.
-      return Array.isArray(saved)
-        ? saved.filter((item) => Number.isInteger(Number(item?.id)) && item?.name)
-        : [];
-    } catch {
-      return [];
+      setOwnBrands(await getWorkshopCarBrands());
+    } catch (error) {
+      if (!silent) setBrandsError(error);
+    } finally {
+      setBrandsLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
+    if (!user) return;
+    loadBrands();
     try {
-      localStorage.setItem(storageKey, JSON.stringify(brands));
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith(OLD_STORAGE_KEY))
+        .forEach((key) => localStorage.removeItem(key));
     } catch {
-      // Keep the table usable when browser storage is unavailable.
+      // Storage unavailable: nothing to clean up.
     }
-  }, [brands, storageKey]);
+  }, [user, loadBrands]);
 
   // The catalog (all brands): GET /CarCatalog/car-brands, loaded when the section opens.
   const [catalog, setCatalog] = useState([]);
@@ -56,18 +85,7 @@ export default function VehicleCatalogDemo() {
     setCatalogLoading(true);
     setCatalogError(false);
     try {
-      const list = await getCarBrands();
-      setCatalog(list);
-
-      // If the API marks the workshop's brands, that's the real list; otherwise keep the
-      // browser copy and only refresh its names and logos from the catalog.
-      if (list.some((brand) => brand.selected !== null)) {
-        setBrands(list.filter((brand) => brand.selected));
-      } else {
-        setBrands((current) =>
-          current.map((item) => list.find((brand) => String(brand.id) === String(item.id)) ?? item)
-        );
-      }
+      setCatalog(await getCarBrands());
     } catch {
       setCatalogError(true);
     } finally {
@@ -92,6 +110,18 @@ export default function VehicleCatalogDemo() {
     setBrandPickerOpen(false);
   };
 
+  // Your brands, with the name and logo from the catalog when the list leaves them out.
+  const brands = useMemo(
+    () =>
+      ownBrands.map((brand) => {
+        const fromCatalog = catalog.find((item) => String(item.id) === String(brand.id));
+        return fromCatalog
+          ? { ...brand, name: brand.name || fromCatalog.name, icon: brand.icon || fromCatalog.icon }
+          : brand;
+      }),
+    [ownBrands, catalog]
+  );
+
   const availableBrands = useMemo(
     () =>
       catalog.filter(
@@ -108,9 +138,10 @@ export default function VehicleCatalogDemo() {
     setSaving(true);
     try {
       await addWorkshopCarBrand(selectedBrand.id);
-      setBrands((current) => [...current, selectedBrand]);
+      setOwnBrands((current) => [...current, selectedBrand]);
       notify.success('carBrandAdded');
       closeModal();
+      await loadBrands({ silent: true });
     } catch (error) {
       notify.error(error, 'carBrand.add');
     } finally {
@@ -124,8 +155,9 @@ export default function VehicleCatalogDemo() {
     setDeletingId(brand.id);
     try {
       await removeWorkshopCarBrand(brand.id);
-      setBrands((current) => current.filter((item) => item.id !== brand.id));
+      setOwnBrands((current) => current.filter((item) => item.id !== brand.id));
       notify.success('carBrandRemoved');
+      await loadBrands({ silent: true });
     } catch (error) {
       notify.error(error, 'carBrand.remove');
     } finally {
@@ -138,7 +170,7 @@ export default function VehicleCatalogDemo() {
       <img src={brand.icon} alt="" className="h-8 w-8 rounded-lg object-contain" />
     ) : (
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F6F3EE] text-xs font-bold text-[#8A8074]">
-        {brand.name.slice(0, 2).toUpperCase()}
+        {(brand.name || '?').slice(0, 2).toUpperCase()}
       </div>
     );
 
@@ -173,7 +205,29 @@ export default function VehicleCatalogDemo() {
               </TR>
             </THead>
             <TBody>
-              {brands.length === 0 ? (
+              {brandsLoading ? (
+                <TR>
+                  <TD colSpan={2}>
+                    <LoadingScreen variant="section" />
+                  </TD>
+                </TR>
+              ) : brandsError ? (
+                <TR>
+                  <TD colSpan={2} className="py-10 text-center">
+                    <p className="text-sm text-red-600">
+                      {getErrorMessage(brandsError, 'carBrand.load')}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => loadBrands()}
+                    >
+                      {catalogText('retry', 'Try again')}
+                    </Button>
+                  </TD>
+                </TR>
+              ) : brands.length === 0 ? (
                 <TR>
                   <TD colSpan={2}>
                     <EmptyState
