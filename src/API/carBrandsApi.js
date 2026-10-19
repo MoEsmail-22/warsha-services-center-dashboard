@@ -2,12 +2,20 @@ import apiClient from './client';
 import { assertApiSuccess, handleApiError } from './errors';
 import { logError, logResponse } from './devLog';
 
-/** One brand from the API → { id, name, icon }. A few field names are accepted until the response is confirmed. */
+// Flags the API may use to mark a brand the workshop already services.
+const SELECTED_FLAGS = ['isSelected', 'selected', 'isSupported', 'isWorkshopBrand', 'isAdded'];
+
+/**
+ * One brand from the API → { id, name, icon, selected }. A few field names are accepted until
+ * the response is confirmed. selected is null when the response doesn't say.
+ */
 export function normalizeCarBrand(brand) {
+  const flag = SELECTED_FLAGS.find((key) => typeof brand[key] === 'boolean');
   return {
     id: brand.id ?? brand.carBrandId ?? brand.brandId,
     name: brand.name ?? brand.nameEn ?? brand.brandName ?? '',
-    icon: brand.icon ?? brand.logo ?? brand.iconUrl ?? null,
+    icon: brand.icon ?? brand.logo ?? brand.logoUrl ?? brand.iconUrl ?? brand.imageUrl ?? null,
+    selected: flag ? brand[flag] : null,
   };
 }
 

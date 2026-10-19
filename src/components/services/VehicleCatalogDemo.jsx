@@ -41,7 +41,7 @@ export default function VehicleCatalogDemo() {
     }
   }, [brands, storageKey]);
 
-  // The catalog (all brands) is loaded the first time the "Add brand" window opens.
+  // The catalog (all brands): GET /CarCatalog/car-brands, loaded when the section opens.
   const [catalog, setCatalog] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState(false);
@@ -56,13 +56,29 @@ export default function VehicleCatalogDemo() {
     setCatalogLoading(true);
     setCatalogError(false);
     try {
-      setCatalog(await getCarBrands());
+      const list = await getCarBrands();
+      setCatalog(list);
+
+      // If the API marks the workshop's brands, that's the real list; otherwise keep the
+      // browser copy and only refresh its names and logos from the catalog.
+      if (list.some((brand) => brand.selected !== null)) {
+        setBrands(list.filter((brand) => brand.selected));
+      } else {
+        setBrands((current) =>
+          current.map((item) => list.find((brand) => String(brand.id) === String(item.id)) ?? item)
+        );
+      }
     } catch {
       setCatalogError(true);
     } finally {
       setCatalogLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user) loadCatalog();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per account
+  }, [user?.id]);
 
   const openModal = () => {
     setModalOpen(true);
