@@ -3,7 +3,8 @@
  *
  * Keeps itself up to date: checks for new bookings every POLLING.bookings.intervalMs, also
  * while the tab is in the background, and right away when the user comes back to the tab;
- * a new booking shows a toast (or a desktop notification when the tab is in the background).
+ * a new booking rings, shows a desktop notification that stays until clicked, and a toast
+ * when the dashboard is on screen.
  *
  * Exposes:
  *   { bookings, loading, error, refresh, loadDetails, todaysBookings, newTodayCount, newYesterdayCount,
@@ -33,7 +34,7 @@ import { normalizeBooking } from '@/utils/normalizeBooking';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { usePolling } from '@/hooks/usePolling';
-import { notifyInBackground } from '@/utils/browserNotifications';
+import { showDesktopNotification } from '@/utils/browserNotifications';
 import { playChime } from '@/utils/notificationSound';
 import { POLLING } from '@/constants/polling';
 
@@ -170,8 +171,10 @@ export function BookingsProvider({ children }) {
               defaultValue:
                 fresh.length === 1 ? 'New booking request' : `${fresh.length} new booking requests`,
             });
-            // Tab in the background → desktop notification; otherwise (or if that fails) the toast.
-            const shown = notifyInBackground({
+            // Always a desktop notification that stays until clicked (also with the tab in
+            // front), plus the toast when the dashboard is on screen.
+            const shown = showDesktopNotification({
+              sticky: true,
               tag: `bookings-${fresh.map((booking) => booking.id).join('-')}`,
               title: message,
               body: fresh
@@ -183,7 +186,7 @@ export function BookingsProvider({ children }) {
                 .filter(Boolean)
                 .join('\n'),
             });
-            if (!shown) showToast('success', message);
+            if (!shown || !document.hidden) showToast('success', message);
           }
         }
         knownIds.current = new Set(next.map((booking) => booking.id));

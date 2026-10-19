@@ -31,10 +31,24 @@ export async function requestBrowserNotificationPermission() {
  * `tag` stops the same item from showing twice.
  */
 export function notifyInBackground({ tag, title, body }) {
-  if (!document.hidden || getBrowserNotificationPermission() !== 'granted') return false;
+  if (!document.hidden) return false;
+  return showDesktopNotification({ tag, title, body });
+}
+
+/**
+ * Shows a desktop notification whether or not the tab is in front (needs permission).
+ * `sticky` keeps it on screen until it's clicked or closed, instead of fading after a few seconds.
+ */
+export function showDesktopNotification({ tag, title, body, sticky = false }) {
+  if (getBrowserNotificationPermission() !== 'granted') return false;
 
   try {
-    const notification = new Notification(title, { body, tag, icon: logo });
+    const notification = new Notification(title, {
+      body,
+      tag,
+      icon: logo,
+      requireInteraction: sticky,
+    });
     notification.onclick = () => {
       window.focus(); // bring the dashboard tab to the front
       notification.close();
