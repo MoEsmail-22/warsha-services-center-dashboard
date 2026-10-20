@@ -1,3 +1,5 @@
+import { parseServerTime } from '@/utils/serverTime';
+
 /**
  * Turns one quote from GET /Workshop/quotes into the shape the Quotes page uses.
  *
@@ -37,10 +39,22 @@ function getInitials(name = '') {
 
 export function normalizeQuote(item) {
   const rawItems = item.items ?? item.quoteItems ?? item.lineItems ?? [];
+  // A line's text: the first non-empty one of the names the API might use.
+  const textOf = (line) =>
+    [
+      line.description,
+      line.label,
+      line.name,
+      line.title,
+      line.serviceName,
+      line.itemName,
+      line.itemDescription,
+      line.details,
+    ].find((value) => typeof value === 'string' && value.trim()) ?? '';
   const lineItems = (Array.isArray(rawItems) ? rawItems : []).map((line, index) => ({
     id: line.id ?? `${item.id}-${index}`,
-    label: line.description ?? line.label ?? line.name ?? '',
-    amount: Number(line.price ?? line.amount ?? 0),
+    label: textOf(line),
+    amount: Number(line.price ?? line.amount ?? line.cost ?? 0),
   }));
 
   const customerName =
@@ -58,7 +72,7 @@ export function normalizeQuote(item) {
     [item.carBrand ?? item.car?.brand, item.carModel ?? item.car?.model].filter(Boolean).join(' ');
 
   const created = item.createdAt ?? item.sentAt ?? item.createdOn;
-  const createdDate = created ? new Date(created) : null;
+  const createdDate = parseServerTime(created);
 
   return {
     id: item.id ?? item.quoteId,
@@ -88,8 +102,7 @@ export function normalizeQuote(item) {
         lineItems.reduce((sum, l) => sum + l.amount, 0)
     ),
     status: toQuoteStatus(item.status ?? item.quoteStatus),
-    sentAt:
-      createdDate && !Number.isNaN(createdDate.getTime()) ? DATE_FORMATTER.format(createdDate) : '',
+    sentAt: createdDate ? DATE_FORMATTER.format(createdDate) : '',
     note: item.note ?? '',
     lineItems,
   };

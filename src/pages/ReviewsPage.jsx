@@ -11,6 +11,7 @@ import Avatar from '@/components/ui/Avatar';
 import RatingStars from '@/components/widgets/RatingStars';
 import EmptyState from '@/components/widgets/EmptyState';
 import Pagination from '@/components/widgets/Pagination';
+import { parseServerTime } from '@/utils/serverTime';
 
 const AVATAR_COLORS = ['#C8730A', '#E08B2F', '#B45F14', '#8A8074', '#A89A8A', '#7D7166'];
 // Tabs: ?type=workshop (default) or ?type=service.
@@ -32,7 +33,9 @@ function getInitials(name = '') {
 function getRelativeTime(date, t) {
   const days = Math.max(
     0,
-    Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
+    Math.floor(
+      (Date.now() - (parseServerTime(date)?.getTime() ?? Date.now())) / (1000 * 60 * 60 * 24)
+    )
   );
 
   if (days === 0) return t('time.today');

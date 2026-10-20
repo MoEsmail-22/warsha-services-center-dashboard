@@ -1,3 +1,5 @@
+import { parseServerTime } from '@/utils/serverTime';
+
 /**
  * Booking statuses (the customer's side: Pending, Confirmed, …) as the words the UI uses
  * (statusStyles.js, filters, badges).
@@ -33,10 +35,11 @@ const REJECTED_STATUSES = ['rejected', 'expired', 'auto_rejected'];
  * BookingsContext; new bookings are found within ~10 s). Null only for a booking never listed.
  */
 export function approvalDeadlineOf(booking) {
-  const deadline = Date.parse(booking?.approvalDeadline ?? '');
-  if (!Number.isNaN(deadline)) return deadline;
-  const created = Date.parse(booking?.createdAtIso ?? '');
-  if (!Number.isNaN(created)) return created + APPROVAL_WINDOW_MS;
+  // Both are made by the backend in UTC, often sent without a zone: read as UTC.
+  const deadline = parseServerTime(booking?.approvalDeadline);
+  if (deadline) return deadline.getTime();
+  const created = parseServerTime(booking?.createdAtIso);
+  if (created) return created.getTime() + APPROVAL_WINDOW_MS;
   return Number.isFinite(booking?.firstSeenAt) ? booking.firstSeenAt + APPROVAL_WINDOW_MS : null;
 }
 

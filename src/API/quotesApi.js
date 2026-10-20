@@ -15,6 +15,27 @@ export async function getQuotes() {
 }
 
 /**
+ * Changes a quote the customer hasn't answered yet:
+ *   PUT /Workshop/quotes/{id}  { items: [{ description, price }], note }
+ */
+export async function updateQuote(quoteId, { items, note }) {
+  try {
+    const response = await apiClient.put(`/Workshop/quotes/${quoteId}`, {
+      items: items.map((item) => ({
+        description: item.description.trim(),
+        price: Number(item.price),
+      })),
+      note: note?.trim() || null,
+    });
+    logResponse('Quotes API', `PUT quote ${quoteId}`, response);
+    return assertApiSuccess(response.data, 'Failed to update the quote.');
+  } catch (error) {
+    logError('Quotes API', `PUT quote ${quoteId}`, error);
+    return handleApiError(error, 'Update quote');
+  }
+}
+
+/**
  * Sends a quote for a booking. The booking ID goes in the URL and in the body:
  *   POST /Workshop/bookings/{bookingId}/quotes
  *   { bookingId, items: [{ description, price }], note }

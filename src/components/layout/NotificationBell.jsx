@@ -13,6 +13,7 @@ import { useSoundEnabled } from '@/hooks/useSoundEnabled';
 import { useBrowserNotificationPermission } from '@/hooks/useBrowserNotificationPermission';
 import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/utils/cn';
+import { parseServerTime } from '@/utils/serverTime';
 
 // Largest unit first: the first one that fits is used ("3 hours ago", not "180 minutes ago").
 const TIME_UNITS = [
@@ -24,20 +25,10 @@ const TIME_UNITS = [
   ['minute', 60],
 ];
 
-/** "5 minutes ago" / «منذ 5 دقائق» with the browser's built-in Intl (no date library needed). */
 /**
- * The backend sends notification times in UTC without a timezone ("2026-10-16T11:30:00"),
- * which the browser would read as local (Egypt) time, 3 hours off. Times without a zone are
- * read as UTC; times with "Z" or "+03:00" are used as they are.
+ * "5 minutes ago" / «منذ 5 دقائق» with the browser's built-in Intl (no date library needed).
+ * Times come in UTC without a zone: parseServerTime reads them as UTC.
  */
-function parseServerTime(value) {
-  if (!value) return null;
-  const text = String(value);
-  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(text);
-  const date = new Date(hasZone || !text.includes('T') ? text : `${text}Z`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function timeAgo(value, lang) {
   const date = parseServerTime(value);
   if (!date) return '';

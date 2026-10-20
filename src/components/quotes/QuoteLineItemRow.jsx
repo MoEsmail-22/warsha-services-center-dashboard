@@ -29,6 +29,7 @@ export function QuoteLineItemRow({ item, onChange, onRemove, descriptionPlacehol
       </div>
 
       <button
+        type="button"
         onClick={() => onRemove(item.id)}
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
         aria-label="Remove item"

@@ -6,10 +6,19 @@ const AREA = 'Bookings API';
 const logResponse = (label, response) => logResponseFor(AREA, label, response);
 const logError = (label, error) => logErrorFor(AREA, label, error);
 
-/** One page of the workshop's bookings (note: lowercase page/pageSize, unlike services). */
-export async function getBookings({ page = 1, pageSize = 100 } = {}) {
+/**
+ * One page of the workshop's bookings (note: lowercase page/pageSize, unlike services).
+ * Optional filters, done by the backend over all bookings: status (e.g. "Confirmed"),
+ * search (text), from / to (ISO date-times). Empty ones aren't sent.
+ */
+export async function getBookings({ page = 1, pageSize = 100, status, search, from, to } = {}) {
+  const filters = Object.fromEntries(
+    Object.entries({ status, search, from, to }).filter(([, value]) => value)
+  );
   try {
-    const response = await apiClient.get('/Workshop/bookings', { params: { page, pageSize } });
+    const response = await apiClient.get('/Workshop/bookings', {
+      params: { page, pageSize, ...filters },
+    });
     logResponse('GET bookings list', response);
     return assertApiSuccess(response.data, 'Failed to load bookings.');
   } catch (error) {

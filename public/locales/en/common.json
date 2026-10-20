@@ -135,7 +135,8 @@
     "desktopNotificationsOn": "Desktop notifications are on",
     "bookingAccepted": "Booking accepted",
     "bookingRejected": "Booking request rejected",
-    "jobStageChanged": "Job stage updated"
+    "jobStageChanged": "Job stage updated",
+    "quoteUpdated": "Quote updated"
   },
   "notificationsPanel": {
     "title": "Notifications",

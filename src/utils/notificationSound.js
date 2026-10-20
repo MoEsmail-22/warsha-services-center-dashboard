@@ -19,21 +19,21 @@ const RING = [
   [1046.5, 0.45], // C6
 ];
 const CHIMES = {
-  // Two notes for a notification.
+  // Two soft notes for a notification (the original chime).
   notification: [
     [659.25, 0], // E5
-    [880, 0.16], // A5
-    [1318.5, 0.32], // E6
+    [880, 0.14], // A5
   ],
   // A new booking rings twice, 1.5 s apart: it has to be answered within 5 minutes.
   booking: [0, 1.5].flatMap((repeat) =>
     RING.map(([frequency, offset]) => [frequency, repeat + offset])
   ),
 };
-// How loud (0–1) and how long each note rings, in seconds.
+// How loud (0–1) and how long each note rings, in seconds. `bright` adds a quieter triangle
+// an octave up, so the booking ring is fuller and easier to hear than a plain sine.
 const STYLE = {
-  notification: { volume: 0.6, length: 0.6 },
-  booking: { volume: 0.9, length: 0.7 },
+  notification: { volume: 0.25, length: 0.45, bright: false },
+  booking: { volume: 0.9, length: 0.7, bright: true },
 };
 
 let audioContext = null;
@@ -94,7 +94,7 @@ export function playChime(kind = 'notification', { force = false } = {}) {
   }
   lastPlayedAt[kind === 'booking' ? 'booking' : 'notification'] = now;
 
-  const { volume, length } = STYLE[kind] ?? STYLE.notification;
+  const { volume, length, bright } = STYLE[kind] ?? STYLE.notification;
   // Overlapping notes are evened out by a compressor, so the loud ring doesn't crackle.
   const output = context.createDynamicsCompressor();
   output.threshold.value = -6;
@@ -104,10 +104,9 @@ export function playChime(kind = 'notification', { force = false } = {}) {
 
   const start = context.currentTime;
   for (const [frequency, offset] of CHIMES[kind] ?? CHIMES.notification) {
-    // A sine plus a quieter triangle an octave up: fuller and easier to hear than a plain sine.
     [
       ['sine', frequency, volume],
-      ['triangle', frequency * 2, volume * 0.35],
+      ...(bright ? [['triangle', frequency * 2, volume * 0.35]] : []),
     ].forEach(([type, pitch, peak]) => {
       const oscillator = context.createOscillator();
       const gain = context.createGain();

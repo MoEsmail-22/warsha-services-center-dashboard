@@ -30,6 +30,7 @@ import {
   WEEK,
 } from '@/components/ui';
 import { createOffer, deleteOffer, getOffers } from '@/API/offersApi';
+import { parseServerTime } from '@/utils/serverTime';
 
 // period: a TimeRangePicker value, turned into startAt / endAt when saving.
 const newOfferForm = () => ({
@@ -46,8 +47,9 @@ const HEADER_CLASS = 'px-3 py-3 text-start text-xs font-semibold whitespace-nowr
 
 /** "7 Oct 2026" on top, "10:00 am" underneath — keeps the date columns narrow. */
 function formatDate(value, language) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return { date: '—', time: '' };
+  // The API sends offer times in UTC without a zone: read as UTC.
+  const date = parseServerTime(value);
+  if (!date) return { date: '—', time: '' };
 
   const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
 
