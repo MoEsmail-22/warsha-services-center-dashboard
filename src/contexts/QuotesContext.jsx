@@ -10,7 +10,7 @@
  * through JobsContext until the Jobs board is connected to the API.
  */
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { createQuote, getQuotes } from '@/API/quotesApi';
+import { createQuote, getQuotes, updateQuote } from '@/API/quotesApi';
 import { isDemoMode } from '@/API/client';
 import { normalizeQuote } from '@/utils/normalizeQuote';
 import { useAuth } from './AuthContext';
@@ -107,8 +107,22 @@ export function QuotesProvider({ children }) {
     return result;
   };
 
+  /**
+   * Saves changes to a quote that's still waiting for the customer (PUT) and reloads the list.
+   * `items` are { label, amount } rows, like the quote builder's. Throws if the request fails.
+   */
+  const editQuote = async (quoteId, { items, note = '' }) => {
+    const rows = items
+      .filter((item) => item.label.trim() && Number(item.amount) > 0)
+      .map((item) => ({ description: item.label, price: item.amount }));
+    const result = await updateQuote(quoteId, { items: rows, note: note || null });
+    await refresh({ silent: true });
+    return result;
+  };
+
   const total = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
   const value = {
+    editQuote,
     recentQuotes: apiQuotes,
     loading,
     error,

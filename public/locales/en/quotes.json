@@ -38,5 +38,14 @@
   "booking": "Booking",
   "chooseBooking": "Choose a booking",
   "noBookingsToQuote": "No bookings with a job in progress",
-  "loadingServices": "Loading the booking's services…"
+  "loadingServices": "Loading the booking's services…",
+  "edit": {
+    "button": "Edit",
+    "title": "Edit quote",
+    "hint": "The customer sees the updated quote. You can edit it until they answer.",
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "loadingLines": "Loading the quote lines…"
+  }
 }

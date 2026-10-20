@@ -104,7 +104,11 @@
     "load": {
       "server": "Quotes couldn't be loaded right now. Please try again."
     },
-    "jobNotInProgress": "A quote can only be sent while the job is in progress. Move the job to \"In progress\" first."
+    "jobNotInProgress": "A quote can only be sent while the job is in progress. Move the job to \"In progress\" first.",
+    "update": {
+      "server": "The quote couldn't be updated right now. Please try again."
+    },
+    "lineIncomplete": "Every line needs a description and a price. Fill them in or remove the line."
   },
   "voucher": {
     "codeRequired": "Enter the voucher code.",
@@ -132,6 +136,11 @@
   "carBrand": {
     "load": {
       "server": "Couldn't load your car brands. Please try again."
+    }
+  },
+  "dashboard": {
+    "revenue": {
+      "server": "Couldn't load the revenue. Please try again."
     }
   }
 }

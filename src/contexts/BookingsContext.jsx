@@ -342,6 +342,24 @@ export function BookingsProvider({ children }) {
     [answerRequest]
   );
 
+  /**
+   * Bookings matching filters the backend applies over ALL bookings (status, search,
+   * from, to), not only the first 100 kept here. Rows come as the list sends them.
+   */
+  const searchBookings = useCallback(
+    async (filters) =>
+      readBookingRows(await getBookings({ page: 1, pageSize: 100, ...filters })).map(
+        normalizeBooking
+      ),
+    []
+  );
+
+  /** A row from searchBookings completed with its details, once loadDetails has them. */
+  const withBookingDetails = useCallback(
+    (row) => withDetails(row, detailsById[String(row.id)]),
+    [detailsById]
+  );
+
   const contextValue = useMemo(() => {
     const today = localDay(0);
     const yesterday = localDay(-1);
@@ -367,6 +385,8 @@ export function BookingsProvider({ children }) {
       rejectBooking,
       changeJobStage,
       updateBookingStatus,
+      searchBookings,
+      withBookingDetails,
     };
   }, [
     bookings,
@@ -374,6 +394,8 @@ export function BookingsProvider({ children }) {
     error,
     refresh,
     loadDetails,
+    searchBookings,
+    withBookingDetails,
     acceptBooking,
     rejectBooking,
     changeJobStage,

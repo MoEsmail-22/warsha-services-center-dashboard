@@ -142,7 +142,8 @@
     "desktopNotificationsOn": "تم تفعيل إشعارات سطح المكتب",
     "bookingAccepted": "تم قبول الحجز",
     "bookingRejected": "تم رفض طلب الحجز",
-    "jobStageChanged": "تم تحديث مرحلة العمل"
+    "jobStageChanged": "تم تحديث مرحلة العمل",
+    "quoteUpdated": "تم تحديث عرض السعر"
   },
   "notificationsPanel": {
     "title": "الإشعارات",

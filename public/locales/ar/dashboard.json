@@ -32,7 +32,13 @@
     "totalLabel": "إجمالي الأسبوع",
     "notAvailable": "غير متاح بعد",
     "emptyTitle": "لا توجد بيانات إيرادات بعد",
-    "emptyDescription": "ستظهر الإيرادات هنا عند توفرها من النظام."
+    "emptyDescription": "ستظهر الإيرادات هنا عند توفرها من النظام.",
+    "titleOtherWeek": "الإيرادات",
+    "totalOtherWeek": "إجمالي الأسبوع",
+    "previousWeek": "الأسبوع السابق",
+    "nextWeek": "الأسبوع التالي",
+    "retry": "حاول مرة أخرى",
+    "noneThisWeek": "لا توجد إيرادات مسجلة هذا الأسبوع بعد."
   },
   "status": {
     "pending": "قيد الانتظار",

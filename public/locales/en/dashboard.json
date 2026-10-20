@@ -32,7 +32,13 @@
     "totalLabel": "Total this week",
     "notAvailable": "Not available yet",
     "emptyTitle": "No revenue data yet",
-    "emptyDescription": "Revenue will appear here once it is available from the system."
+    "emptyDescription": "Revenue will appear here once it is available from the system.",
+    "titleOtherWeek": "Revenue",
+    "totalOtherWeek": "Total for the week",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "retry": "Try again",
+    "noneThisWeek": "No revenue recorded this week yet."
   },
   "status": {
     "pending": "Pending",

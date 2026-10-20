@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { assertApiSuccess, createLocalError, handleApiError } from './errors';
+import { parseServerTime } from '@/utils/serverTime';
 
 /**
  * Converts the Busy Mode form values into the body the API expects.
@@ -27,12 +28,15 @@ export function toBusyPayload({ startAt, endAt }) {
 /** One busy period from the API → { id, busyFrom, busyUntil } (ISO strings), or null if it has none. */
 function normalizeBusyPeriod(item, index = 0) {
   if (!item || typeof item !== 'object') return null;
-  const from = item.busyFrom ?? item.startAt ?? item.from ?? item.start ?? item.busyStart;
-  const until = item.busyUntil ?? item.endAt ?? item.until ?? item.end ?? item.busyEnd;
-  const start = new Date(from);
-  const end = new Date(until);
-  if (!from || !until || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  if (end <= start) return null;
+  // The API sends these in UTC without a zone ("2026-10-20T19:11:32.417"): read as UTC,
+  // otherwise they'd be 3 hours early in Egypt and a current period would look finished.
+  const start = parseServerTime(
+    item.busyFrom ?? item.startAt ?? item.from ?? item.start ?? item.busyStart
+  );
+  const end = parseServerTime(
+    item.busyUntil ?? item.endAt ?? item.until ?? item.end ?? item.busyEnd
+  );
+  if (!start || !end || end <= start) return null;
   return {
     id: String(item.id ?? `busy-${index}`),
     busyFrom: start.toISOString(),

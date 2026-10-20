@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Send, Search, FileText, Trash2 } from 'lucide-react';
+import { Plus, Send, Search, FileText, Trash2, Pencil } from 'lucide-react';
 import { EmptyState } from '../components/widgets/EmptyState';
 import VoucherRedeemForm from '../components/bookings/VoucherRedeemForm';
 import { useQuotes } from '../contexts/QuotesContext';
@@ -14,6 +14,7 @@ import { useAppTranslation } from '../hooks/useAppTranslation';
 import Avatar from '../components/ui/Avatar';
 import { StatusBadge } from '../components/widgets';
 import QuoteLineItemRow from '../components/quotes/QuoteLineItemRow';
+import EditQuoteModal from '../components/quotes/EditQuoteModal';
 import { filterQuotes, formatQuoteCurrency } from '../utils/quotes';
 
 export default function QuotesPage() {
@@ -155,6 +156,24 @@ export default function QuotesPage() {
   const currency = i18n.language?.startsWith('ar') ? 'ج.م' : 'EGP';
   //utitlys
   const filteredQuotes = filterQuotes(recentQuotes, search);
+
+  // The quote being edited lives in the URL (?editQuote=12). Only quotes still waiting for
+  // the customer's answer can be changed.
+  const editQuoteId = searchParams.get('editQuote');
+  const quoteBeingEdited =
+    recentQuotes.find(
+      (quote) => String(quote.id) === String(editQuoteId) && quote.status === 'sent'
+    ) ?? null;
+  const setEditQuoteId = (quoteId) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (quoteId) next.set('editQuote', quoteId);
+        else next.delete('editQuote');
+        return next;
+      },
+      { replace: true }
+    );
 
   return (
     <div className="flex h-full flex-col">
@@ -513,6 +532,16 @@ export default function QuotesPage() {
                   <div className="mt-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <StatusBadge status={quote.status} />
+                      {quote.status === 'sent' && (
+                        <button
+                          type="button"
+                          onClick={() => setEditQuoteId(quote.id)}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-[#0E5C5B] transition-colors hover:bg-[#E8F1EF]"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          {t('edit.button', { defaultValue: 'Edit' })}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -521,6 +550,13 @@ export default function QuotesPage() {
           </div>
         </div>
       </div>
+
+      <EditQuoteModal
+        quote={quoteBeingEdited}
+        onClose={() => setEditQuoteId('')}
+        locale={locale}
+        currency={currency}
+      />
     </div>
   );
 }

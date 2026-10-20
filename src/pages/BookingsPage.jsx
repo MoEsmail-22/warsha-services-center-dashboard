@@ -25,10 +25,29 @@ import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { useNotify } from '../hooks/useNotify';
 import { useErrorMessage } from '../hooks/useErrorMessage';
 
+// Statuses the backend can filter by (GET /Workshop/bookings?status=). "In Progress" is a job
+// stage, not a booking status, so it stays a filter on screen.
+const SERVER_STATUS = {
+  Pending: 'PendingApproval',
+  Confirmed: 'Confirmed',
+  Completed: 'Completed',
+};
+// Wait this long after the last key press before searching.
+const SEARCH_DELAY_MS = 400;
+
 export default function BookingsPage() {
   const { t, i18n } = useAppTranslation('bookings');
-  const { bookings, loading, error, refresh, loadDetails, acceptBooking, rejectBooking } =
-    useBookings();
+  const {
+    bookings,
+    loading,
+    error,
+    refresh,
+    loadDetails,
+    acceptBooking,
+    rejectBooking,
+    searchBookings,
+    withBookingDetails,
+  } = useBookings();
   // The jobs board sends the customer's name (the bookings API doesn't yet).
   const { jobs } = useJobs();
   const notify = useNotify();
@@ -162,10 +181,73 @@ export default function BookingsPage() {
   const openBooking = (booking) => updateParams({ booking: booking.id }, { addToHistory: true });
   const closeBooking = () => updateParams({ booking: null });
 
-  const filtered = useMemo(
-    () => filterBookings(bookings, { tab: activeTab, search, advanced: advancedFilters }),
-    [bookings, activeTab, search, advancedFilters]
-  );
+  /*
+   * Search, status and dates are sent to the backend, which filters ALL the workshop's
+   * bookings (the list kept on screen only has the latest 100). The week tabs, the service
+   * filter and "In Progress" still filter the result on screen.
+   */
+  const serverText = (search || advancedFilters?.search || '').trim();
+  const serverStatus = SERVER_STATUS[advancedFilters?.status] ?? '';
+  const serverFrom = advancedFilters?.dateFrom
+    ? new Date(`${advancedFilters.dateFrom}T00:00:00`).toISOString()
+    : '';
+  const serverTo = advancedFilters?.dateTo
+    ? new Date(`${advancedFilters.dateTo}T23:59:59`).toISOString()
+    : '';
+  const serverKey = [serverText, serverStatus, serverFrom, serverTo].join('|');
+  const usesServer = serverKey !== '|||';
+
+  const [serverRows, setServerRows] = useState(null);
+  const [serverError, setServerError] = useState(null);
+  const [serverAttempt, setServerAttempt] = useState(0);
+  useEffect(() => {
+    // While a new search runs, the previous matches stay on screen (no flicker while typing).
+    setServerError(null);
+    if (!usesServer) {
+      setServerRows(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      searchBookings({ search: serverText, status: serverStatus, from: serverFrom, to: serverTo })
+        .then((rows) => !cancelled && setServerRows(rows))
+        .catch((err) => !cancelled && setServerError(err));
+    }, SEARCH_DELAY_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- serverKey holds the four values
+  }, [serverKey, serverAttempt, searchBookings]);
+
+  // The backend's matches, using the live row (status, countdown, details) when it's on screen.
+  const baseBookings = useMemo(() => {
+    if (!usesServer) return bookings;
+    const live = new Map(bookings.map((booking) => [String(booking.id), booking]));
+    return (serverRows ?? []).map((row) => live.get(String(row.id)) ?? withBookingDetails(row));
+  }, [usesServer, bookings, serverRows, withBookingDetails]);
+
+  const filtered = useMemo(() => {
+    if (!usesServer) {
+      return filterBookings(bookings, { tab: activeTab, search, advanced: advancedFilters });
+    }
+    // What the backend already checked isn't checked again (it may match on fields the
+    // list doesn't send). When both search boxes are used, the backend got the top one.
+    const advanced = advancedFilters && {
+      ...advancedFilters,
+      search: search ? advancedFilters.search : '',
+      dateFrom: '',
+      dateTo: '',
+    };
+    return filterBookings(baseBookings, { tab: activeTab, search: '', advanced });
+  }, [usesServer, bookings, baseBookings, activeTab, search, advancedFilters]);
+
+  const listLoading = usesServer
+    ? serverRows === null && !serverError
+    : loading && bookings.length === 0;
+  const listError = usesServer ? serverError : bookings.length === 0 ? error : null;
+  const retryList = () => (usesServer ? setServerAttempt((n) => n + 1) : refresh());
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPageSafe = Math.min(currentPage, totalPages);
@@ -356,19 +438,21 @@ export default function BookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {loading && bookings.length === 0 ? (
+              {listLoading ? (
                 <tr>
                   <td colSpan={9}>
                     <LoadingScreen variant="section" />
                   </td>
                 </tr>
-              ) : error && bookings.length === 0 ? (
+              ) : listError ? (
                 <tr>
                   <td colSpan={9} className="py-10 text-center">
-                    <p className="text-sm text-red-600">{getErrorMessage(error, 'booking.load')}</p>
+                    <p className="text-sm text-red-600">
+                      {getErrorMessage(listError, 'booking.load')}
+                    </p>
                     <button
                       type="button"
-                      onClick={() => refresh()}
+                      onClick={retryList}
                       className="mt-3 rounded-lg border border-[#E8E2D8] bg-white px-3 py-1.5 text-xs font-semibold text-[#5A5045] hover:bg-[#F2EDE4]"
                     >
                       {t('retry', { defaultValue: 'Try again' })}
