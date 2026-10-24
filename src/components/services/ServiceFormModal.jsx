@@ -98,6 +98,7 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
           <Input
             id={`${formId}-name-en`}
             label={t('fields.nameEn')}
+            placeholder={t('placeholders.nameEn', { defaultValue: 'e.g. Oil Change' })}
             value={form.nameEn}
             onChange={(event) => updateField('nameEn', event.target.value)}
             required
@@ -106,6 +107,7 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
           <Input
             id={`${formId}-name-ar`}
             label={t('fields.nameAr')}
+            placeholder={t('placeholders.nameAr', { defaultValue: 'مثال: تغيير الزيت' })}
             value={form.nameAr}
             onChange={(event) => updateField('nameAr', event.target.value)}
             dir="rtl"
@@ -118,6 +120,7 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
             min="0"
 
             label={t('fields.minPricing')}
+            placeholder={t('placeholders.minPricing', { defaultValue: 'e.g. 200' })}
             value={form.minPricing}
             onChange={(event) => updateField('minPricing', event.target.value)}
             required
@@ -129,6 +132,7 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
             min={form.minPricing || '0'}
 
             label={t('fields.maxPricing')}
+            placeholder={t('placeholders.maxPricing', { defaultValue: 'e.g. 500' })}
             value={form.maxPricing}
             onChange={(event) => updateField('maxPricing', event.target.value)}
             required
@@ -157,6 +161,7 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
             type="number"
             min="1"
             label={t('fields.duration')}
+            placeholder={t('placeholders.duration', { defaultValue: 'e.g. 60' })}
             value={form.durationMinutes}
             onChange={(event) => updateField('durationMinutes', event.target.value)}
             required
@@ -171,6 +176,9 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
             <textarea
               id={`${formId}-description-en`}
               className="input min-h-24 resize-y"
+              placeholder={t('placeholders.descriptionEn', {
+                defaultValue: "What's included in this service?",
+              })}
               value={form.descriptionEn}
               onChange={(event) => updateField('descriptionEn', event.target.value)}
               required
@@ -185,6 +193,9 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
               id={`${formId}-description-ar`}
               dir="rtl"
               className="input min-h-24 resize-y"
+              placeholder={t('placeholders.descriptionAr', {
+                defaultValue: 'ماذا تشمل هذه الخدمة؟',
+              })}
               value={form.descriptionAr}
               onChange={(event) => updateField('descriptionAr', event.target.value)}
               required

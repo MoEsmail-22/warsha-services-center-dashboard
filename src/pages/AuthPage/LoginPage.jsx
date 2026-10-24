@@ -11,6 +11,7 @@ import { forgotPassword } from '../../API/Auth/ForgotPassword';
 import { useNotify } from '../../hooks/useNotify';
 import { useErrorMessage } from '../../hooks/useErrorMessage';
 import { findKnownBackendError } from '../../utils/knownBackendErrors';
+import { useServerFieldErrors } from '../../hooks/useServerFieldErrors';
 
 export default function LoginPage() {
   const { login, loginAsDemo } = useAuth();
@@ -21,6 +22,7 @@ export default function LoginPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const notify = useNotify();
+  const showFieldErrors = useServerFieldErrors();
   const { getErrorMessage } = useErrorMessage();
   const [forgotLoading, setForgotLoading] = useState(false);
   const { lang = 'en' } = useParams();
@@ -76,6 +78,7 @@ export default function LoginPage() {
       await login(formData);
       navigate(from, { replace: true });
     } catch (err) {
+      if (showFieldErrors(err, setFieldError, { fields: ['email', 'password'] })) return;
       const message = getErrorMessage(err, 'auth.login');
       const knownError = findKnownBackendError(err.details)?.key;
 

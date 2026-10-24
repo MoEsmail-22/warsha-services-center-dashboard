@@ -105,7 +105,8 @@
       "discountPercentage": "نسبة الخصم",
       "selectAllServicesHint": "يُطبَّق الخصم على كل خدمات الورشة.",
       "howLong": "مدة العرض؟",
-      "runs": "مدة العرض"
+      "runs": "مدة العرض",
+      "discountPlaceholder": "مثال: 15"
     },
     "actions": {
       "cancel": "إلغاء",
@@ -152,5 +153,14 @@
     "loadingBrands": "جارٍ تحميل الماركات…",
     "loadError": "تعذر تحميل قائمة الماركات.",
     "retry": "حاول مرة أخرى"
+  },
+  "placeholders": {
+    "nameEn": "e.g. Oil Change",
+    "nameAr": "مثال: تغيير الزيت",
+    "minPricing": "مثال: 200",
+    "maxPricing": "مثال: 500",
+    "duration": "مثال: 60",
+    "descriptionEn": "What's included in this service?",
+    "descriptionAr": "ماذا تشمل هذه الخدمة؟"
   }
 }

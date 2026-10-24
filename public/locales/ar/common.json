@@ -71,7 +71,12 @@
     "passwordMismatch": "كلمتا المرور غير متطابقتين",
     "passwordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
     "pendingVerification": "تم إنشاء الحساب. يجب أن يوثّقه أحد المسؤولين قبل أن تتمكن من تسجيل الدخول.",
-    "goToLogin": "الذهاب لتسجيل الدخول"
+    "goToLogin": "الذهاب لتسجيل الدخول",
+    "addressEn": "العنوان (بالإنجليزية)",
+    "addressAr": "العنوان (بالعربية)",
+    "addressEnRequired": "العنوان مطلوب",
+    "addressArRequired": "العنوان بالعربية مطلوب",
+    "phone": "رقم الهاتف"
   },
   "trends": {
     "vsYesterday": "عن الأمس",
@@ -212,5 +217,12 @@
     "custom": "مخصص",
     "summary": "من",
     "invalidRange": "اختر وقت انتهاء بعد وقت البدء."
+  },
+  "placeholders": {
+    "workshopName": "مثال: مركز الأمل لصيانة السيارات",
+    "email": "you@example.com",
+    "phone": "01012345678",
+    "addressEn": "e.g. 25 Tahrir St, Dokki, Giza",
+    "addressAr": "مثال: ٢٥ شارع التحرير، الدقي، الجيزة"
   }
 }

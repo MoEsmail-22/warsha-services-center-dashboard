@@ -10,6 +10,7 @@ import GoogleMapsPreview from '@/components/settings/GoogleMapsPreview';
 import LocationPicker from '@/components/settings/LocationPicker';
 import WorkingHoursEditor from '@/components/settings/WorkingHoursEditor';
 import WorkshopImagePicker from '@/components/settings/WorkshopImagePicker';
+import { useServerFieldErrors } from '@/hooks/useServerFieldErrors';
 
 const DESCRIPTION_MAX_LENGTH = 1000;
 
@@ -78,6 +79,7 @@ export default function SettingsPage() {
   } = useSettings();
   const [workshopForm, setWorkshopForm] = useState(null);
   const notify = useNotify();
+  const showFieldErrors = useServerFieldErrors();
   const [saving, setSaving] = useState(false);
   const [locationError, setLocationError] = useState('');
   const initializedForm = useRef(false);
@@ -88,6 +90,8 @@ export default function SettingsPage() {
     setValue,
     getFieldState,
     watch,
+    setError,
+    formState: { errors: fieldErrors },
   } = useForm({
     defaultValues: { ...EMPTY_FORM, descriptionEn: '', descriptionAr: '' },
   });
@@ -179,7 +183,14 @@ export default function SettingsPage() {
       setLocationError('');
       notify.success('settingsSaved');
     } catch (err) {
-      notify.error(err, 'settings.save');
+      // A field the backend refused is marked on the form; anything else is a toast.
+      const marked = showFieldErrors(err, setError, {
+        fields: [...PROFILE_FIELDS, ...DESCRIPTION_FIELDS]
+          .map((field) => field.key)
+          .concat('googleMapsUrl'),
+        fieldMap: { googleMapsLink: 'googleMapsUrl' },
+      });
+      if (!marked) notify.error(err, 'settings.save');
     } finally {
       setSaving(false);
     }
@@ -249,6 +260,7 @@ export default function SettingsPage() {
                   }
                   register={register}
                   name={field.key}
+                  error={fieldErrors[field.key]?.message}
                 />
               ))}
 
@@ -263,9 +275,14 @@ export default function SettingsPage() {
                     rows={4}
                     maxLength={DESCRIPTION_MAX_LENGTH}
                     placeholder={t(`${field.translationKey}Placeholder`)}
-                    className="input min-h-24 resize-y leading-6"
+                    className={`input min-h-24 resize-y leading-6 ${
+                      fieldErrors[field.key] ? 'border-red-500 focus:border-red-500' : ''
+                    }`}
                     {...register(field.key)}
                   />
+                  {fieldErrors[field.key] && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors[field.key].message}</p>
+                  )}
                   <p className="mt-1 text-end text-xs text-[#5A6968]">
                     {(watch(field.key) || '').length}/{DESCRIPTION_MAX_LENGTH}
                   </p>
@@ -277,7 +294,7 @@ export default function SettingsPage() {
                 type="url"
                 label={t('googleMapsUrl')}
                 placeholder={data.workshop.location?.googleMapsUrl || t('googleMapsUrlPlaceholder')}
-                error={locationError}
+                error={locationError || fieldErrors.googleMapsUrl?.message}
                 register={register}
                 name="googleMapsUrl"
                 rules={{

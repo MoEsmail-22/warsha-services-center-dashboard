@@ -8,6 +8,7 @@ import { resetPassword } from '../../API/Auth/ResetPassword';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNotify } from '../../hooks/useNotify';
 import { useErrorMessage } from '../../hooks/useErrorMessage';
+import { useServerFieldErrors } from '../../hooks/useServerFieldErrors';
 
 const passwordRules = {
   required: 'Password is required',
@@ -25,6 +26,7 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const notify = useNotify();
+  const showFieldErrors = useServerFieldErrors();
   const { getErrorMessage } = useErrorMessage();
 
   const {
@@ -65,7 +67,8 @@ export default function ResetPasswordPage() {
       notify.success('passwordReset');
       navigate(`/${lang}/login`, { replace: true });
     } catch (error) {
-      notify.error(error, 'auth.reset');
+      const fields = ['email', 'otp', 'newPassword', 'confirmPassword'];
+      if (!showFieldErrors(error, setError, { fields })) notify.error(error, 'auth.reset');
     }
   };
 
@@ -82,6 +85,7 @@ export default function ResetPasswordPage() {
             id="reset-email"
             type="email"
             label="Email address"
+            placeholder="you@example.com"
             autoComplete="email"
             error={errors.email?.message}
             register={registerField}
@@ -93,6 +97,7 @@ export default function ResetPasswordPage() {
             type="text"
             inputMode="numeric"
             label="Verification code"
+            placeholder="123456"
             autoComplete="one-time-code"
             error={errors.otp?.message}
             register={registerField}
@@ -105,6 +110,7 @@ export default function ResetPasswordPage() {
               id="reset-new-password"
               type={showPassword ? 'text' : 'password'}
               label="New password"
+              placeholder="••••••••"
               autoComplete="new-password"
               error={errors.newPassword?.message}
               className="pe-16"
@@ -131,6 +137,7 @@ export default function ResetPasswordPage() {
               id="reset-confirm-password"
               type={showPassword ? 'text' : 'password'}
               label="Confirm new password"
+              placeholder="••••••••"
               autoComplete="new-password"
               error={errors.confirmPassword?.message}
               className="pe-16"
