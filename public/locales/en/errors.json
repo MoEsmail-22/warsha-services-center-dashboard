@@ -14,7 +14,8 @@
     "invalidCredentials": "The email or password is incorrect.",
     "userNotFound": "No account was found with this email.",
     "sessionInvalid": "Your session is no longer valid. Please sign in again.",
-    "invalidOtp": "The code is incorrect or has expired."
+    "invalidOtp": "The code is incorrect or has expired.",
+    "notVerified": "Your account is not verified yet. Please contact support."
   },
   "form": {
     "invalidStart": "Enter a valid start date and time.",
