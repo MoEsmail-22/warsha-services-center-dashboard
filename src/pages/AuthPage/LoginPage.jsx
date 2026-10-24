@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -25,6 +25,8 @@ export default function LoginPage() {
   const showFieldErrors = useServerFieldErrors();
   const { getErrorMessage } = useErrorMessage();
   const [forgotLoading, setForgotLoading] = useState(false);
+  // A message about the account itself (e.g. not verified yet), shown above the form.
+  const [accountNotice, setAccountNotice] = useState('');
   const { lang = 'en' } = useParams();
 
   const {
@@ -74,6 +76,7 @@ export default function LoginPage() {
 
   const onSubmit = async (formData) => {
     clearErrors(['email', 'password']);
+    setAccountNotice('');
     try {
       await login(formData);
       navigate(from, { replace: true });
@@ -86,6 +89,9 @@ export default function LoginPage() {
       if (knownError === 'auth.invalidCredentials') {
         setFieldError('email', { type: 'server', message });
         setFieldError('password', { type: 'server', message });
+      } else if (knownError === 'auth.notVerified') {
+        // Not a typing mistake: shown as a notice that stays until the next attempt.
+        setAccountNotice(message);
       } else if (knownError === 'auth.userNotFound') {
         setFieldError('email', { type: 'server', message });
       } else {
@@ -105,6 +111,16 @@ export default function LoginPage() {
             {t('login.subtitle', { defaultValue: 'Sign in to your dashboard' })}
           </p>
         </div>
+
+        {accountNotice && (
+          <div
+            role="alert"
+            className="mb-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>{accountNotice}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormHookInput

@@ -12,6 +12,8 @@ export const KNOWN_BACKEND_ERRORS = {
   // accept / reject answer these when the token is missing or expired.
   'current user is not associated with a workshop': 'auth.sessionInvalid',
   'current user is not a workshop': 'auth.sessionInvalid',
+  // Login of a workshop the admin hasn't verified yet.
+  'your account is not verified yet. please contact support': 'auth.notVerified',
   'invalid otp': 'auth.invalidOtp',
   'invalid or expired otp': 'auth.invalidOtp',
   'can only create quotes for in-progress jobs': 'quote.jobNotInProgress',
@@ -24,6 +26,12 @@ export const KNOWN_BACKEND_ERRORS = {
  * value for the translated text: "Service 'adlf' already exists…" → { name: 'adlf' }.
  */
 export const KNOWN_BACKEND_PATTERNS = [
+  {
+    // Other wordings of the same login refusal.
+    pattern: /account (?:is )?not (?:yet )?verified/i,
+    key: 'auth.notVerified',
+    values: () => ({}),
+  },
   {
     // PATCH .../status refuses a skipped job stage, e.g. "Invalid transition: New → InProgress".
     pattern: /^invalid transition: (.+?) (?:→|->) (.+)$/i,

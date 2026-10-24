@@ -617,9 +617,10 @@ export default function QuotesPage() {
                           type="button"
                           onClick={() => handleCollectCash(quote)}
                           disabled={collectingId !== null}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-[#0E5C5B] transition-colors hover:bg-[#E8F1EF] disabled:cursor-not-allowed disabled:opacity-50"
+                          // A solid green button: recording money should be easy to spot.
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-1 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          <Banknote className="h-3.5 w-3.5" />
+                          <Banknote className="h-4 w-4" />
                           {collectingId === quote.id
                             ? t('collecting', { defaultValue: 'Saving…' })
                             : t('collectCash', { defaultValue: 'Cash received' })}
