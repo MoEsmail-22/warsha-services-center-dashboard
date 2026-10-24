@@ -193,9 +193,10 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* All of today's bookings; a long day scrolls inside the card, the header stays on top. */}
+          <div className="max-h-[300px] overflow-auto">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-100">
                   <th
                     style={{ fontFamily: "'Sora', sans-serif" }}
@@ -215,7 +216,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {todaysBookings.slice(0, 6).map((booking) => (
+                {todaysBookings.map((booking) => (
                   <tr
                     key={booking.id}
                     className="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/50"

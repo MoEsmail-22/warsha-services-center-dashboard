@@ -36,6 +36,28 @@ export async function updateQuote(quoteId, { items, note }) {
 }
 
 /**
+ * Records that the customer paid an approved quote in cash at the workshop:
+ *   POST /Workshop/bookings/{bookingId}/quotes/{quoteId}/collect-cash
+ *   { bookingId, quoteId }
+ */
+export async function collectQuoteCash(bookingId, quoteId) {
+  try {
+    const response = await apiClient.post(
+      `/Workshop/bookings/${bookingId}/quotes/${quoteId}/collect-cash`,
+      {
+        bookingId: Number(bookingId),
+        quoteId: Number(quoteId),
+      }
+    );
+    logResponse('Quotes API', `POST collect cash for quote ${quoteId}`, response);
+    return assertApiSuccess(response.data, 'Failed to record the cash payment.');
+  } catch (error) {
+    logError('Quotes API', `POST collect cash for quote ${quoteId}`, error);
+    return handleApiError(error, 'Collect cash');
+  }
+}
+
+/**
  * Sends a quote for a booking. The booking ID goes in the URL and in the body:
  *   POST /Workshop/bookings/{bookingId}/quotes
  *   { bookingId, items: [{ description, price }], note }

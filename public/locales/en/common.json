@@ -136,7 +136,8 @@
     "bookingAccepted": "Booking accepted",
     "bookingRejected": "Booking request rejected",
     "jobStageChanged": "Job stage updated",
-    "quoteUpdated": "Quote updated"
+    "quoteUpdated": "Quote updated",
+    "cashCollected": "Cash payment recorded"
   },
   "notificationsPanel": {
     "title": "Notifications",

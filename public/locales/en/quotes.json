@@ -47,5 +47,7 @@
     "save": "Save changes",
     "saving": "Saving…",
     "loadingLines": "Loading the quote lines…"
-  }
+  },
+  "collectCash": "Cash received",
+  "collecting": "Saving…"
 }

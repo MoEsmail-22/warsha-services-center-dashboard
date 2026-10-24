@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Send, Search, FileText, Trash2, Pencil } from 'lucide-react';
+import { Plus, Send, Search, FileText, Trash2, Pencil, Banknote } from 'lucide-react';
 import { EmptyState } from '../components/widgets/EmptyState';
 import VoucherRedeemForm from '../components/bookings/VoucherRedeemForm';
 import { useQuotes } from '../contexts/QuotesContext';
@@ -28,6 +28,7 @@ export default function QuotesPage() {
     removeLineItem,
     replaceLineItems,
     sendQuote,
+    collectCash,
   } = useQuotes();
 
   const { bookings } = useBookings();
@@ -61,6 +62,24 @@ export default function QuotesPage() {
   const vehicle = selectedBooking?.vehicle ?? '';
 
   const [search, setSearch] = useState('');
+
+  // "Cash received" on approved quotes: which one is being sent now, and which were recorded.
+  // The quotes list has no "paid" field yet, so a recorded one is hidden until the page reloads.
+  const [collectingId, setCollectingId] = useState(null);
+  const [collectedIds, setCollectedIds] = useState([]);
+  const handleCollectCash = async (quote) => {
+    if (collectingId) return;
+    setCollectingId(quote.id);
+    try {
+      await collectCash(quote);
+      notify.success('cashCollected');
+      setCollectedIds((current) => [...current, quote.id]);
+    } catch (err) {
+      notify.error(err, 'quote.collectCash');
+    } finally {
+      setCollectingId(null);
+    }
+  };
   const [note, setNote] = useState('');
   // Future repairs / recommendations (description + remaining km). Screen only for now:
   // the quote endpoint has no field for them, so they are not sent.
@@ -540,6 +559,19 @@ export default function QuotesPage() {
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           {t('edit.button', { defaultValue: 'Edit' })}
+                        </button>
+                      )}
+                      {quote.status === 'accepted' && !collectedIds.includes(quote.id) && (
+                        <button
+                          type="button"
+                          onClick={() => handleCollectCash(quote)}
+                          disabled={collectingId !== null}
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-[#0E5C5B] transition-colors hover:bg-[#E8F1EF] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Banknote className="h-3.5 w-3.5" />
+                          {collectingId === quote.id
+                            ? t('collecting', { defaultValue: 'Saving…' })
+                            : t('collectCash', { defaultValue: 'Cash received' })}
                         </button>
                       )}
                     </div>
