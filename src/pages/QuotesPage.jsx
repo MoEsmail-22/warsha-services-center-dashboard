@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Send, Search, FileText, Trash2, Pencil, Banknote, Lock } from 'lucide-react';
+import { Plus, Send, Search, FileText, Trash2, Pencil, Banknote } from 'lucide-react';
 import { EmptyState } from '../components/widgets/EmptyState';
 import VoucherRedeemForm from '../components/bookings/VoucherRedeemForm';
 import { useQuotes } from '../contexts/QuotesContext';
@@ -97,15 +97,12 @@ export default function QuotesPage() {
     setRecommendations((current) => current.filter((item) => item.id !== id));
   const [sending, setSending] = useState(false);
 
-  // The booking's own services (GET /Workshop/bookings/{id}) are already paid for in the
-  // booking, so they are shown read-only and NOT sent again: a quote only carries the extra
-  // work the workshop adds below. Choosing another booking starts the extras from one empty line.
-  const [bookingServices, setBookingServices] = useState([]);
+  // Choosing a booking starts the quote from its services (name + price), which can then be
+  // edited, removed or added to; every line is sent. The list may not include services, so
+  // the booking's details are loaded (GET /Workshop/bookings/{id}).
   const [loadingServices, setLoadingServices] = useState(false);
   useEffect(() => {
-    setBookingServices([]);
     if (!selectedBookingId) return undefined;
-    replaceLineItems([]);
 
     let cancelled = false;
     setLoadingServices(true);
@@ -114,7 +111,7 @@ export default function QuotesPage() {
         if (cancelled) return;
         const raw = result?.data ?? result;
         const booking = raw && typeof raw === 'object' ? normalizeBooking(raw) : null;
-        setBookingServices(
+        replaceLineItems(
           (booking?.serviceBreakdown ?? []).map((service, index) => ({
             id: `${selectedBookingId}-${index}`,
             label: service.label,
@@ -145,8 +142,20 @@ export default function QuotesPage() {
       );
       return;
     }
-    const hasValidItem = lineItems.some((item) => item.label.trim() && Number(item.amount) > 0);
-    if (!hasValidItem) {
+    // Empty lines are skipped; a half-filled one (text without price or the other way) is not.
+    const incomplete = lineItems.some(
+      (item) => Boolean(item.label.trim()) !== Number(item.amount) > 0
+    );
+    if (incomplete) {
+      notify.error(
+        createLocalError(
+          'quote.lineIncomplete',
+          'Every line needs a description and a price. Fill them in or remove the line.'
+        )
+      );
+      return;
+    }
+    if (!lineItems.some((item) => item.label.trim() && Number(item.amount) > 0)) {
       notify.error(
         createLocalError(
           'quote.itemsRequired',
@@ -178,7 +187,6 @@ export default function QuotesPage() {
   const currency = i18n.language?.startsWith('ar') ? 'ج.م' : 'EGP';
   //utitlys
   const filteredQuotes = filterQuotes(recentQuotes, search);
-  const bookingTotal = bookingServices.reduce((sum, service) => sum + service.amount, 0);
 
   // The quote being edited lives in the URL (?editQuote=12). Only quotes still waiting for
   // the customer's answer can be changed.
@@ -273,62 +281,22 @@ export default function QuotesPage() {
             </select>
           </div>
 
-          {/* The booking's own services: shown for reference, not editable, not sent again */}
-          {selectedBooking && (loadingServices || bookingServices.length > 0) && (
-            <div className="mb-5 rounded-xl border border-[#E8E2D8] bg-[#FBF8F3] p-4">
-              <div className="mb-2 flex items-start justify-between gap-3">
-                <div>
-                  <p className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-[#5A6968] uppercase">
-                    <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                    {t('bookingServices.title', { defaultValue: 'Already in the booking' })}
-                  </p>
-                  <p className="mt-1 text-xs text-[#8A8074]">
-                    {t('bookingServices.hint', {
-                      defaultValue:
-                        "The customer already booked these. They aren't part of the quote and can't be changed here.",
-                    })}
-                  </p>
-                </div>
-                {loadingServices && <Spinner size="sm" />}
-              </div>
-              <ul className="divide-y divide-[#EFE9DF]">
-                {bookingServices.map((service) => (
-                  <li
-                    key={service.id}
-                    className="flex items-center justify-between gap-3 py-2 text-sm text-[#5A5045]"
-                  >
-                    <span className="min-w-0 truncate">{service.label}</span>
-                    <span className="shrink-0 font-semibold">
-                      {formatQuoteCurrency(service.amount, locale, currency)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {bookingServices.length > 0 && (
-                <div className="mt-2 flex items-center justify-between border-t border-[#E8E2D8] pt-2 text-xs text-[#5A6968]">
-                  <span>{t('bookingServices.subtotal', { defaultValue: 'Booking total' })}</span>
-                  <span className="font-semibold text-[#15201F]">
-                    {formatQuoteCurrency(bookingTotal, locale, currency)}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Extra work: the only lines sent in the quote */}
+          {/* Line items list: the booking's services first, then anything added */}
           <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold tracking-wide text-[#5A6968] uppercase">
-                {t('extras.title', { defaultValue: 'Extra work' })}
-              </p>
-              <p className="mt-0.5 text-xs text-[#8A8074]">
-                {t('extras.hint', {
-                  defaultValue: 'Only these are sent to the customer for approval.',
-                })}
-              </p>
-            </div>
+            <p className="text-xs font-semibold tracking-wide text-[#5A6968] uppercase">
+              {t('lineItems', { defaultValue: 'Line items' })}
+            </p>
             <span className="flex items-center gap-2 text-xs text-[#5A6968]">
-              {lineItems.length} {t('items', { defaultValue: 'items' })}
+              {loadingServices ? (
+                <>
+                  <Spinner size="sm" />
+                  {t('loadingServices', { defaultValue: "Loading the booking's services…" })}
+                </>
+              ) : (
+                <>
+                  {lineItems.length} {t('items', { defaultValue: 'items' })}
+                </>
+              )}
             </span>
           </div>
 
@@ -484,7 +452,7 @@ export default function QuotesPage() {
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
             <div>
               <p className="text-xs tracking-wide text-[#5A6968] uppercase">
-                {t('extraTotal', { defaultValue: 'Quote total (extra work)' })}
+                {t('total', { defaultValue: 'Total' })}
               </p>
               <p
                 className="text-2xl font-bold text-[#15201F]"
@@ -492,18 +460,10 @@ export default function QuotesPage() {
               >
                 {formatQuoteCurrency(total, locale, currency)}
               </p>
-              {bookingServices.length > 0 && total > 0 && (
-                <p className="mt-0.5 text-xs text-[#5A6968]">
-                  {t('newBookingTotal', {
-                    defaultValue: 'Booking + quote: {{amount}}',
-                    amount: formatQuoteCurrency(bookingTotal + total, locale, currency),
-                  })}
-                </p>
-              )}
             </div>
             <button
               type="submit"
-              disabled={total === 0 || sending}
+              disabled={total === 0 || loadingServices || sending}
               className="inline-flex items-center gap-2 rounded-lg px-5 text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               style={{
                 backgroundColor: '#0E5C5B',
