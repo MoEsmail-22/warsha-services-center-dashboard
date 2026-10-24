@@ -105,7 +105,8 @@
       "discountPercentage": "Discount percentage",
       "selectAllServicesHint": "The discount applies to every service in your workshop.",
       "howLong": "How long does it run?",
-      "runs": "Offer runs"
+      "runs": "Offer runs",
+      "discountPlaceholder": "e.g. 15"
     },
     "actions": {
       "cancel": "Cancel",
@@ -152,5 +153,14 @@
     "loadingBrands": "Loading brands…",
     "loadError": "Couldn't load the brand list.",
     "retry": "Try again"
+  },
+  "placeholders": {
+    "nameEn": "e.g. Oil Change",
+    "nameAr": "مثال: تغيير الزيت",
+    "minPricing": "e.g. 200",
+    "maxPricing": "e.g. 500",
+    "duration": "e.g. 60",
+    "descriptionEn": "What's included in this service?",
+    "descriptionAr": "ماذا تشمل هذه الخدمة؟"
   }
 }

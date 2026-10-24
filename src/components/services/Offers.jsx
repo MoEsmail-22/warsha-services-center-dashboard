@@ -387,6 +387,7 @@ export default function Offers() {
             min="1"
             max="100"
             label={offerText('fields.discountPercentage', 'Discount percentage')}
+            placeholder={offerText('fields.discountPlaceholder', 'e.g. 15')}
             value={form.discountPercentage}
             onChange={(event) => updateField('discountPercentage', event.target.value)}
             required

@@ -68,7 +68,12 @@
     "passwordMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 8 characters",
     "pendingVerification": "Account created. An admin must verify it before you can sign in.",
-    "goToLogin": "Go to login"
+    "goToLogin": "Go to login",
+    "addressEn": "Address (English)",
+    "addressAr": "Address (Arabic)",
+    "addressEnRequired": "Address is required",
+    "addressArRequired": "Arabic address is required",
+    "phone": "Phone"
   },
   "trends": {
     "vsYesterday": "vs yesterday",
@@ -185,5 +190,12 @@
     "custom": "Custom",
     "summary": "From",
     "invalidRange": "Choose an end time after the start time."
+  },
+  "placeholders": {
+    "workshopName": "e.g. Al Amal Auto Service",
+    "email": "you@example.com",
+    "phone": "01012345678",
+    "addressEn": "e.g. 25 Tahrir St, Dokki, Giza",
+    "addressAr": "مثال: ٢٥ شارع التحرير، الدقي، الجيزة"
   }
 }

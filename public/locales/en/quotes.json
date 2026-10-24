@@ -9,7 +9,7 @@
   "lineItems": "Line items",
   "items": "items",
   "itemPlaceholder": "Service description",
-  "noItems": "No line items yet. Click \"Add line item\" to start.",
+  "noItems": "No extra work yet. Click \"Add line item\" to add one.",
   "addLineItem": "Add line item",
   "notes": "Notes",
   "notesSubtitle": "Optional notes or details to share with the customer.",
@@ -49,5 +49,16 @@
     "loadingLines": "Loading the quote lines…"
   },
   "collectCash": "Cash received",
-  "collecting": "Saving…"
+  "collecting": "Saving…",
+  "bookingServices": {
+    "title": "Already in the booking",
+    "hint": "The customer already booked these. They aren't part of the quote and can't be changed here.",
+    "subtotal": "Booking total"
+  },
+  "extras": {
+    "title": "Extra work",
+    "hint": "Only these are sent to the customer for approval."
+  },
+  "extraTotal": "Quote total (extra work)",
+  "newBookingTotal": "Booking + quote: {{amount}}"
 }

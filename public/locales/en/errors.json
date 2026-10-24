@@ -19,7 +19,8 @@
   "form": {
     "invalidStart": "Enter a valid start date and time.",
     "invalidEnd": "Enter a valid end date and time.",
-    "endBeforeStart": "The end time must be after the start time."
+    "endBeforeStart": "The end time must be after the start time.",
+    "fixHighlighted": "Please fix the highlighted fields."
   },
   "offer": {
     "serviceRequired": "Choose a service for this offer.",
@@ -146,5 +147,12 @@
     "revenue": {
       "server": "Couldn't load the revenue. Please try again."
     }
+  },
+  "field": {
+    "required": "This field is required.",
+    "invalidEmail": "Enter a valid email address.",
+    "minLength": "Use at least {{count}} characters.",
+    "maxLength": "Use at most {{count}} characters.",
+    "invalid": "This value is not valid."
   }
 }

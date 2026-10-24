@@ -8,6 +8,10 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import FormHookInput from '../../components/ui/FormHookInput';
 import { useNotify } from '../../hooks/useNotify';
+import { useServerFieldErrors } from '../../hooks/useServerFieldErrors';
+
+// The form's fields that the backend can report errors for.
+const REGISTER_FIELDS = ['name', 'email', 'phone', 'addressEn', 'addressAr', 'password'];
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -16,6 +20,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const notify = useNotify();
+  const showFieldErrors = useServerFieldErrors();
   // Stays on screen (with a link to login) until the admin verifies the account.
   const [pendingVerification, setPendingVerification] = useState(false);
   const { lang = 'en' } = useParams();
@@ -23,6 +28,7 @@ export default function RegisterPage() {
   const {
     register: registerField,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm({
     mode: 'onChange',
@@ -30,7 +36,8 @@ export default function RegisterPage() {
       name: '',
       email: '',
       phone: '',
-      address: '',
+      addressEn: '',
+      addressAr: '',
       password: '',
       confirmPassword: '',
     },
@@ -44,7 +51,9 @@ export default function RegisterPage() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        address: formData.address,
+        // The endpoint takes the address in both languages (an "address" field is ignored).
+        addressEn: formData.addressEn.trim(),
+        addressAr: formData.addressAr.trim(),
         password: formData.password,
       });
 
@@ -61,7 +70,10 @@ export default function RegisterPage() {
       notify.success('registered');
       navigate(`/${lang}/`, { replace: true });
     } catch (err) {
-      notify.error(err, 'auth.register');
+      // A field the backend refused is marked on the form; anything else is a toast.
+      if (!showFieldErrors(err, setError, { fields: REGISTER_FIELDS })) {
+        notify.error(err, 'auth.register');
+      }
     }
   };
 
@@ -93,6 +105,9 @@ export default function RegisterPage() {
             id="register-name"
             type="text"
             label={t('register.name', { defaultValue: 'Full name' })}
+            placeholder={t('placeholders.workshopName', {
+              defaultValue: 'e.g. Al Amal Auto Service',
+            })}
             autoComplete="name"
             error={errors.name?.message}
             register={registerField}
@@ -104,6 +119,7 @@ export default function RegisterPage() {
             id="register-email"
             type="email"
             label={t('register.email', { defaultValue: 'Email address' })}
+            placeholder={t('placeholders.email', { defaultValue: 'you@example.com' })}
             autoComplete="email"
             error={errors.email?.message}
             register={registerField}
@@ -114,7 +130,8 @@ export default function RegisterPage() {
           <FormHookInput
             id="register-phone"
             type="tel"
-            label="Phone"
+            label={t('register.phone', { defaultValue: 'Phone' })}
+            placeholder={t('placeholders.phone', { defaultValue: '01012345678' })}
             autoComplete="tel"
             error={errors.phone?.message}
             register={registerField}
@@ -130,14 +147,38 @@ export default function RegisterPage() {
           />
 
           <FormHookInput
-            id="register-address"
+            id="register-address-en"
             type="text"
-            label="Address"
+            label={t('register.addressEn', { defaultValue: 'Address (English)' })}
+            placeholder={t('placeholders.addressEn', {
+              defaultValue: 'e.g. 25 Tahrir St, Dokki, Giza',
+            })}
             autoComplete="street-address"
-            error={errors.address?.message}
+            error={errors.addressEn?.message}
             register={registerField}
-            name="address"
-            rules={{ required: 'Address is required' }}
+            name="addressEn"
+            rules={{
+              required: t('register.addressEnRequired', { defaultValue: 'Address is required' }),
+            }}
+          />
+
+          <FormHookInput
+            id="register-address-ar"
+            type="text"
+            dir="rtl"
+            lang="ar"
+            label={t('register.addressAr', { defaultValue: 'Address (Arabic)' })}
+            placeholder={t('placeholders.addressAr', {
+              defaultValue: 'مثال: ٢٥ شارع التحرير، الدقي، الجيزة',
+            })}
+            error={errors.addressAr?.message}
+            register={registerField}
+            name="addressAr"
+            rules={{
+              required: t('register.addressArRequired', {
+                defaultValue: 'Arabic address is required',
+              }),
+            }}
           />
 
           <div className="relative">
@@ -145,6 +186,7 @@ export default function RegisterPage() {
               id="register-password"
               type={showPassword ? 'text' : 'password'}
               label={t('register.password', { defaultValue: 'Password ' })}
+              placeholder="••••••••"
               autoComplete="new-password"
               error={errors.password?.message}
               className="pe-16"
@@ -178,6 +220,7 @@ export default function RegisterPage() {
               id="register-confirm-password"
               type={showPassword ? 'text' : 'password'}
               label={t('register.confirmPassword', { defaultValue: 'Confirm password' })}
+              placeholder="••••••••"
               autoComplete="new-password"
               error={errors.confirmPassword?.message}
               className="pe-16"

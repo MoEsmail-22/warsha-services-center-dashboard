@@ -21,8 +21,9 @@ export function QuoteLineItemRow({ item, onChange, onRemove, descriptionPlacehol
         <input
           type="number"
           min="0"
-
-          value={item.amount}
+          // 0 shows as an empty box with a grey "0", so there's nothing to delete before typing.
+          placeholder="0"
+          value={item.amount || ''}
           onChange={(event) => onChange(item.id, 'amount', event.target.value)}
           className="h-full w-full bg-transparent px-1.5 text-right text-sm font-semibold text-gray-900 focus:outline-none"
         />
