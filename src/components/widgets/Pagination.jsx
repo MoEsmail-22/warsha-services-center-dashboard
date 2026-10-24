@@ -2,6 +2,19 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
 
+// At most this many page numbers are shown; the window slides with the current page.
+const MAX_VISIBLE_PAGES = 5;
+
+/**
+ * The page numbers to show: up to MAX_VISIBLE_PAGES, with the current page in the middle
+ * when possible (page 6 of 10 → 4 5 6 7 8; page 1 → 1–5; page 10 → 6–10).
+ */
+function visiblePages(currentPage, totalPages) {
+  const count = Math.min(MAX_VISIBLE_PAGES, totalPages);
+  const first = Math.min(Math.max(1, currentPage - Math.floor(count / 2)), totalPages - count + 1);
+  return Array.from({ length: count }, (_, index) => first + index);
+}
+
 /**
  * Shared pagination for paginated dashboard lists.
  * Pass pageSizeOptions + onPageSizeChange to show a "Rows per page" picker.
@@ -70,7 +83,7 @@ export function Pagination({
         >
           <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
         </button>
-        {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+        {visiblePages(safePage, totalPages).map((page) => (
           <button
             key={page}
             type="button"
