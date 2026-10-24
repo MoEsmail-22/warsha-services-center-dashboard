@@ -108,7 +108,11 @@
     "update": {
       "server": "The quote couldn't be updated right now. Please try again."
     },
-    "lineIncomplete": "Every line needs a description and a price. Fill them in or remove the line."
+    "lineIncomplete": "Every line needs a description and a price. Fill them in or remove the line.",
+    "collectCash": {
+      "server": "The payment couldn't be recorded. Please try again.",
+      "validation": "The payment couldn't be recorded for this quote. Check that the customer approved it and chose cash."
+    }
   },
   "voucher": {
     "codeRequired": "Enter the voucher code.",

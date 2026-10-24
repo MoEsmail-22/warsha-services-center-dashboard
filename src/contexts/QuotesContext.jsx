@@ -10,7 +10,7 @@
  * through JobsContext until the Jobs board is connected to the API.
  */
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { createQuote, getQuotes, updateQuote } from '@/API/quotesApi';
+import { collectQuoteCash, createQuote, getQuotes, updateQuote } from '@/API/quotesApi';
 import { isDemoMode } from '@/API/client';
 import { normalizeQuote } from '@/utils/normalizeQuote';
 import { useAuth } from './AuthContext';
@@ -120,9 +120,20 @@ export function QuotesProvider({ children }) {
     return result;
   };
 
+  /**
+   * Records that the customer paid an approved quote in cash (POST …/collect-cash) and
+   * reloads the list. Throws if the request fails.
+   */
+  const collectCash = async (quote) => {
+    const result = await collectQuoteCash(quote.bookingId, quote.id);
+    await refresh({ silent: true });
+    return result;
+  };
+
   const total = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
   const value = {
     editQuote,
+    collectCash,
     recentQuotes: apiQuotes,
     loading,
     error,

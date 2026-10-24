@@ -192,9 +192,10 @@ export default function VehicleCatalogDemo() {
       </div>
 
       <Card padded={false} className="flex flex-1 flex-col">
-        <div className="flex-1 overflow-x-auto px-4 pb-4">
+        {/* Long lists scroll inside the card; the header row stays on top. */}
+        <div className="max-h-[300px] flex-1 overflow-auto px-4 pb-4">
           <Table className={brands.length ? 'w-full min-w-[360px]' : 'w-full'}>
-            <THead>
+            <THead className="sticky top-0 z-10">
               <TR className="hover:bg-gray-50">
                 <TH className="px-3 py-2.5 whitespace-nowrap">
                   {catalogText('table.brand', 'Brand')}
