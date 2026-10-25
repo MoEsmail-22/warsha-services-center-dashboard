@@ -75,6 +75,26 @@ export async function deleteOffer(offerId) {
   }
 }
 
+/**
+ * Changes an offer: PUT /Workshop/offers/{offerId}
+ *   { offerId, serviceId (null = all services), discountPercentage, startAt, endAt }
+ */
+export async function updateOffer(offerId, form) {
+  try {
+    const payload = toOfferPayload(form);
+    const response = await apiClient.put(`/Workshop/offers/${offerId}`, {
+      offerId: Number(offerId),
+      serviceId: payload.serviceId ?? null,
+      discountPercentage: payload.discountPercentage,
+      startAt: payload.startAt,
+      endAt: payload.endAt,
+    });
+    return assertApiSuccess(response.data, 'Failed to update the offer.');
+  } catch (error) {
+    return handleApiError(error, 'Update offer');
+  }
+}
+
 export async function createOffer(form) {
   try {
     const response = await apiClient.post('/Workshop/offer', toOfferPayload(form));

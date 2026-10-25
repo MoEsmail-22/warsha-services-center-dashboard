@@ -96,7 +96,8 @@
       "actions": "Actions"
     },
     "modal": {
-      "title": "Add an offer"
+      "title": "Add an offer",
+      "editTitle": "Edit offer"
     },
     "fields": {
       "service": "Service",
@@ -111,7 +112,8 @@
     "actions": {
       "cancel": "Cancel",
       "delete": "Delete offer",
-      "retry": "Try again"
+      "retry": "Try again",
+      "edit": "Edit offer"
     },
     "noServices": "Add a service first to create an offer.",
     "allServices": "All services",
@@ -122,7 +124,8 @@
       "confirm": "Delete",
       "message": "Delete the {{discount}}% offer on {{service}}? Customers will stop seeing it."
     },
-    "deleting": "Deleting…"
+    "deleting": "Deleting…",
+    "saveChanges": "Save changes"
   },
   "emptyDescription": "Add the services you offer so customers can book them.",
   "vehicleCatalog": {

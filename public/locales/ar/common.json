@@ -149,7 +149,8 @@
     "bookingRejected": "تم رفض طلب الحجز",
     "jobStageChanged": "تم تحديث مرحلة العمل",
     "quoteUpdated": "تم تحديث عرض السعر",
-    "cashCollected": "تم تسجيل الدفع النقدي"
+    "cashCollected": "تم تسجيل الدفع النقدي",
+    "offerUpdated": "تم تحديث العرض"
   },
   "notificationsPanel": {
     "title": "الإشعارات",

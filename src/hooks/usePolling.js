@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { backgroundTimeout, clearBackgroundTimeout } from '@/utils/workerTimer';
 
 /**
@@ -17,8 +17,11 @@ export function usePolling(
   { intervalMs, maxIntervalMs = intervalMs * 4, enabled = true, runWhenHidden = false }
 ) {
   // Always call the latest task without restarting the timer when it changes.
+  // (Updated after each render: refs must not be written while rendering.)
   const taskRef = useRef(task);
-  taskRef.current = task;
+  useLayoutEffect(() => {
+    taskRef.current = task;
+  });
 
   useEffect(() => {
     if (!enabled) return undefined;

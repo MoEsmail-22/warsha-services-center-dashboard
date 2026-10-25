@@ -104,6 +104,8 @@ export function normalizeQuote(item) {
     status: toQuoteStatus(item.status ?? item.quoteStatus),
     sentAt: createdDate ? DATE_FORMATTER.format(createdDate) : '',
     note: item.note ?? '',
+    // How the customer chose to pay when approving ("Cash", "CashOnDelivery", 0…); null if not sent.
+    paymentType: item.paymentType ?? item.paymentMethod ?? item.payment?.type ?? null,
     lineItems,
   };
 }

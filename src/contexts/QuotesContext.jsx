@@ -11,6 +11,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { collectQuoteCash, createQuote, getQuotes, updateQuote } from '@/API/quotesApi';
+import { syncRecommendations } from '@/API/recommendationsApi';
 import { isDemoMode } from '@/API/client';
 import { normalizeQuote } from '@/utils/normalizeQuote';
 import { useAuth } from './AuthContext';
@@ -65,7 +66,8 @@ export function QuotesProvider({ children }) {
     async () => {
       if (!(await refresh({ silent: true }))) throw new Error('Quotes check failed');
     },
-    { ...POLLING.quotes, enabled }
+    // Like the bookings: keeps checking while the tab is in the background too.
+    { ...POLLING.quotes, enabled, runWhenHidden: true }
   );
 
   const addLineItem = () => {
@@ -95,29 +97,40 @@ export function QuotesProvider({ children }) {
    * Sends the quote being built for a booking (POST) and reloads the list.
    * Throws if the request fails, so the page can show the error.
    */
-  const sendQuote = async ({ bookingId, note = '' }) => {
+  const sendQuote = async ({ bookingId, note = '', recommendations = [] }) => {
     const items = lineItems
       .filter((item) => item.label.trim() && Number(item.amount) > 0)
       .map((item) => ({ description: item.label, price: item.amount }));
 
     // The note is optional: null when empty.
     const result = await createQuote(bookingId, { items, note: note || null });
+    // Then the recommendations (POST /Workshop/recommendations, one per row). The quote is
+    // already sent, so a failed one is reported back instead of throwing.
+    const recommendationsFailed = await syncRecommendations(bookingId, recommendations);
     setLineItems(createDefaultLineItems());
     await refresh();
-    return result;
+    return { result, recommendationsFailed };
   };
 
   /**
    * Saves changes to a quote that's still waiting for the customer (PUT) and reloads the list.
    * `items` are { label, amount } rows, like the quote builder's. Throws if the request fails.
    */
-  const editQuote = async (quoteId, { items, note = '' }) => {
+  const editQuote = async (
+    quoteId,
+    { items, note = '', bookingId, recommendations, previousRecommendations = [] }
+  ) => {
     const rows = items
       .filter((item) => item.label.trim() && Number(item.amount) > 0)
       .map((item) => ({ description: item.label, price: item.amount }));
     const result = await updateQuote(quoteId, { items: rows, note: note || null });
+    // Recommendations follow the quote: new rows POST, changed PUT, removed DELETE.
+    const recommendationsFailed =
+      bookingId && recommendations
+        ? await syncRecommendations(bookingId, recommendations, previousRecommendations)
+        : 0;
     await refresh({ silent: true });
-    return result;
+    return { result, recommendationsFailed };
   };
 
   /**

@@ -9,6 +9,7 @@ import { getBooking } from '@/API/bookingsApi';
 import { normalizeBooking } from '@/utils/normalizeBooking';
 import { formatQuoteCurrency } from '@/utils/quotes';
 import QuoteLineItemRow from './QuoteLineItemRow';
+import RecommendationRows from './RecommendationRows';
 
 const newRow = () => ({ id: `${Date.now()}-${Math.random()}`, label: '', amount: 0 });
 
@@ -35,6 +36,10 @@ export default function EditQuoteModal({ quote, onClose, locale, currency }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingLines, setLoadingLines] = useState(false);
+  // The booking's recommendations: what's on screen, and what the backend had (to know
+  // which ones were changed or removed when saving).
+  const [recommendations, setRecommendations] = useState([]);
+  const [savedRecommendations, setSavedRecommendations] = useState([]);
 
   // Start from the quote each time another one is opened. Only the id counts: the quotes
   // list reloads in the background every 30 s, and that mustn't wipe unsaved changes.
@@ -47,6 +52,8 @@ export default function EditQuoteModal({ quote, onClose, locale, currency }) {
     if (!quote) return undefined;
     setRows(rowsOf(quote));
     setNote(quote.note ?? '');
+    setRecommendations([]);
+    setSavedRecommendations([]);
     if (!quote.bookingId) return undefined;
 
     let cancelled = false;
@@ -54,7 +61,12 @@ export default function EditQuoteModal({ quote, onClose, locale, currency }) {
     getBooking(quote.bookingId)
       .then((result) => {
         const raw = result?.data ?? result;
-        const pending = raw && typeof raw === 'object' ? normalizeBooking(raw).pendingQuote : null;
+        const booking = raw && typeof raw === 'object' ? normalizeBooking(raw) : null;
+        if (!cancelled && booking) {
+          setRecommendations(booking.recommendations.map((item) => ({ ...item })));
+          setSavedRecommendations(booking.recommendations);
+        }
+        const pending = booking?.pendingQuote ?? null;
         const sameQuote =
           pending && (pending.id == null || String(pending.id) === String(quote.id));
         if (cancelled || !sameQuote || !pending.lineItems.length) return;
@@ -114,8 +126,22 @@ export default function EditQuoteModal({ quote, onClose, locale, currency }) {
 
     setSaving(true);
     try {
-      await editQuote(quote.id, { items: filled, note: note.trim() });
+      const { recommendationsFailed } = await editQuote(quote.id, {
+        items: filled,
+        note: note.trim(),
+        bookingId: quote.bookingId,
+        recommendations,
+        previousRecommendations: savedRecommendations,
+      });
       notify.success('quoteUpdated');
+      if (recommendationsFailed > 0) {
+        notify.error(
+          createLocalError(
+            'quote.recommendationsFailed',
+            "The quote was saved, but some recommendations couldn't be saved."
+          )
+        );
+      }
       onClose();
     } catch (error) {
       notify.error(error, 'quote.update');
@@ -191,6 +217,13 @@ export default function EditQuoteModal({ quote, onClose, locale, currency }) {
             })}
           />
         </div>
+
+        {/* The booking's recommendations: saved with the quote (POST / PUT / DELETE) */}
+        <RecommendationRows
+          rows={recommendations}
+          onChange={setRecommendations}
+          disabled={loadingLines || saving}
+        />
 
         <div className="flex items-center justify-between border-t border-gray-100 pt-3">
           <span className="text-xs tracking-wide text-[#5A6968] uppercase">

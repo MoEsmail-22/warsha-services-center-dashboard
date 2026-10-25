@@ -9,16 +9,13 @@
   "lineItems": "البنود",
   "items": "بند",
   "itemPlaceholder": "وصف الخدمة",
-  "noItems": "لا توجد بنود بعد. اضغط \"إضافة بند\" للبدء.",
+  "noItems": "لا توجد أعمال إضافية بعد. اضغط \"إضافة بند\" لإضافة بند.",
   "addLineItem": "إضافة بند",
   "notes": "ملاحظات",
   "notesSubtitle": "ملاحظات أو تفاصيل اختيارية لمشاركتها مع العميل.",
   "notePlaceholder": "ملاحظات أو تفاصيل للعميل",
   "futureRepairs": "إصلاحات أو توصيات مستقبلية",
-  "futureRepairsSubtitle": "اقتراحات اختيارية لمشاركتها مع العميل.",
-  "futureRepairPlaceholder": "الإصلاح أو الاقتراح الموصى به",
-  "remainingKmPlaceholder": "الكيلومترات المتبقية",
-  "km": "كم",
+  "futureRepairsSubtitle": "اقتراحات اختيارية تُرسل للعميل مع عرض السعر.",
   "addFutureRepair": "إضافة توصية",
   "removeFutureRepair": "إزالة الاقتراح",
   "optional": "اختياري",
@@ -51,5 +48,29 @@
     "loadingLines": "جارٍ تحميل بنود عرض السعر…"
   },
   "collectCash": "تم استلام النقدية",
-  "collecting": "جارٍ الحفظ…"
+  "collecting": "جارٍ الحفظ…",
+  "bookingServices": {
+    "title": "موجودة في الحجز بالفعل",
+    "hint": "حجز العميل هذه الخدمات بالفعل. ليست جزءًا من عرض السعر ولا يمكن تعديلها هنا.",
+    "subtotal": "إجمالي الحجز"
+  },
+  "extras": {
+    "title": "أعمال إضافية",
+    "hint": "اختياري. هذه البنود فقط تُضاف إلى الحجز ليوافق عليها العميل."
+  },
+  "quoteTotal": "الإجمالي",
+  "totalBreakdown": "الحجز {{booking}} + أعمال إضافية {{extra}}",
+  "totalBookingOnly": "خدمات الحجز فقط، بدون أعمال إضافية",
+  "recommendation": {
+    "title": "توصية",
+    "titlePlaceholder": "مثال: تغيير أقراص الفرامل الأمامية",
+    "priority": "الأولوية",
+    "details": "التفاصيل",
+    "detailsPlaceholder": "تفاصيل (اختياري)، مثال: خلال الـ 5,000 كم القادمة",
+    "priorities": {
+      "low": "منخفضة",
+      "medium": "متوسطة",
+      "high": "عالية"
+    }
+  }
 }
