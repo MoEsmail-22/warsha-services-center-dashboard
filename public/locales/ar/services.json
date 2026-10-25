@@ -96,7 +96,8 @@
       "actions": "الإجراءات"
     },
     "modal": {
-      "title": "إضافة عرض"
+      "title": "إضافة عرض",
+      "editTitle": "تعديل العرض"
     },
     "fields": {
       "service": "الخدمة",
@@ -111,7 +112,8 @@
     "actions": {
       "cancel": "إلغاء",
       "delete": "حذف العرض",
-      "retry": "حاول مرة أخرى"
+      "retry": "حاول مرة أخرى",
+      "edit": "تعديل العرض"
     },
     "noServices": "أضف خدمة أولاً لإنشاء عرض.",
     "allServices": "كل الخدمات",
@@ -122,7 +124,8 @@
       "confirm": "حذف",
       "message": "حذف عرض الخصم {{discount}}% على {{service}}؟ لن يظهر للعملاء بعد الآن."
     },
-    "deleting": "جارٍ الحذف…"
+    "deleting": "جارٍ الحذف…",
+    "saveChanges": "حفظ التغييرات"
   },
   "emptyDescription": "أضف الخدمات التي تقدمها ليتمكن العملاء من حجزها.",
   "vehicleCatalog": {

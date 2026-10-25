@@ -34,6 +34,9 @@
     },
     "delete": {
       "server": "The offer couldn't be deleted right now. Please try again later."
+    },
+    "update": {
+      "server": "The offer couldn't be updated right now. Please try again."
     }
   },
   "service": {
@@ -114,7 +117,8 @@
     "collectCash": {
       "server": "The payment couldn't be recorded. Please try again.",
       "validation": "The payment couldn't be recorded for this quote. Check that the customer approved it and chose cash."
-    }
+    },
+    "recommendationsFailed": "The quote was sent, but some recommendations couldn't be saved."
   },
   "voucher": {
     "codeRequired": "Enter the voucher code.",

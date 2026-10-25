@@ -10,6 +10,7 @@
  */
 import { toStatusKey } from '@/constants/bookingStatuses';
 import { normalizeQuote } from '@/utils/normalizeQuote';
+import { normalizeRecommendation } from '@/API/recommendationsApi';
 
 const CUSTOMER_COLOR = '#C8730A';
 
@@ -139,6 +140,12 @@ export function normalizeBooking(item) {
     pendingQuote: item.pendingQuote
       ? normalizeQuote({ bookingId: id, ...item.pendingQuote })
       : null,
+    // Future repairs / recommendations for this booking (the field name isn't documented yet).
+    recommendations: (
+      [item.recommendations, item.pendingQuote?.recommendations, item.workshopRecommendations].find(
+        Array.isArray
+      ) ?? []
+    ).map(normalizeRecommendation),
     createdAt: created ? DATE_TIME_FORMATTER.format(created) : '',
     createdAtIso: item.createdAt ?? item.createdOn ?? null,
     // When the 5-minute answer window ends (see bookingStatuses.js → approvalDeadlineOf).

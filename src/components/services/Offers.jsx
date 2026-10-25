@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BadgePercent, Plus, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { BadgePercent, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +30,7 @@ import {
   TR,
   WEEK,
 } from '@/components/ui';
-import { createOffer, deleteOffer, getOffers } from '@/API/offersApi';
+import { createOffer, deleteOffer, getOffers, updateOffer } from '@/API/offersApi';
 import { parseServerTime } from '@/utils/serverTime';
 
 // period: a TimeRangePicker value, turned into startAt / endAt when saving.
@@ -39,6 +40,28 @@ const newOfferForm = () => ({
   discountPercentage: '',
   period: createTimeRange({ duration: WEEK, customEndIn: WEEK }),
 });
+const pad = (n) => String(n).padStart(2, '0');
+const dateInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const timeInput = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+/** The form for editing an offer: its service, discount and exact start / end (Custom). */
+function offerForm(offer) {
+  const start = parseServerTime(offer.startAt) ?? new Date();
+  const end = parseServerTime(offer.endAt) ?? new Date(start.getTime() + 7 * 86_400_000);
+  return {
+    serviceId: offer.serviceId == null ? '' : String(offer.serviceId),
+    allServices: offer.serviceId == null,
+    discountPercentage: String(offer.discountPercentage ?? ''),
+    period: {
+      startMode: 'later',
+      startDate: dateInput(start),
+      startTime: timeInput(start),
+      duration: 'custom',
+      endDate: dateInput(end),
+      endTime: timeInput(end),
+    },
+  };
+}
 // Quick lengths for the "How long does it run?" buttons.
 const OFFER_PRESETS = [DAY, 3 * DAY, WEEK, 2 * WEEK, 'month'];
 
@@ -95,6 +118,37 @@ export default function Offers() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // The offer being edited lives in the URL (?editOffer=12); none = adding a new one.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editOfferId = searchParams.get('editOffer');
+  const editingOffer = editOfferId
+    ? (offers.find((offer) => String(offer.id) === editOfferId) ?? null)
+    : null;
+  const setEditOfferId = (offerId) =>
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (offerId) next.set('editOffer', offerId);
+        else next.delete('editOffer');
+        return next;
+      },
+      { replace: true }
+    );
+  const openEdit = (offer) => {
+    setForm(offerForm(offer));
+    setEditOfferId(offer.id);
+    setModalOpen(true);
+  };
+
+  // A link with ?editOffer=12 opens that offer once the list has loaded.
+  useEffect(() => {
+    if (editingOffer && !modalOpen) {
+      setForm(offerForm(editingOffer));
+      setModalOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the linked offer appears
+  }, [editingOffer?.id]);
 
   // ?offersPage=2&offersSize=20 — prefixed so it doesn't clash with the Services table.
   const { page, pageSize, setPage, setPageSize } = usePaginationParams('offers');
@@ -161,6 +215,7 @@ export default function Offers() {
     if (saving) return;
     setModalOpen(false);
     setForm(newOfferForm());
+    setEditOfferId('');
   };
 
   const addOffer = async (event) => {
@@ -172,14 +227,17 @@ export default function Offers() {
     try {
       // "Now" means the moment of saving.
       const { start, end } = timeRangeOf(form.period);
-      await createOffer({ ...form, startAt: start, endAt: end });
+      const values = { ...form, startAt: start, endAt: end };
+      if (editingOffer) await updateOffer(editingOffer.id, values);
+      else await createOffer(values);
       setModalOpen(false);
       setForm(newOfferForm());
-      notify.success('offerCreated');
-      // Reload so the new offer shows with its backend ID.
+      setEditOfferId('');
+      notify.success(editingOffer ? 'offerUpdated' : 'offerCreated');
+      // Reload so the list shows what the backend saved.
       await loadOffers();
     } catch (error) {
-      notify.error(error, 'offer.create');
+      notify.error(error, editingOffer ? 'offer.update' : 'offer.create');
     } finally {
       setSaving(false);
     }
@@ -219,6 +277,7 @@ export default function Offers() {
         <Button
           onClick={() => {
             setForm(newOfferForm());
+            setEditOfferId('');
             setModalOpen(true);
           }}
           className="gap-2 self-start sm:self-auto"
@@ -293,6 +352,15 @@ export default function Offers() {
                     <TD className="px-3 py-3 text-end whitespace-nowrap">
                       <button
                         type="button"
+                        onClick={() => openEdit(offer)}
+                        className="rounded-lg p-2 text-gray-400 transition hover:bg-[#E8F1EF] hover:text-[#0E5C5B]"
+                        aria-label={offerText('actions.edit', 'Edit offer')}
+                        title={offerText('actions.edit', 'Edit offer')}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setDeleteTarget(offer)}
                         disabled={deleting}
                         className="rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -324,7 +392,11 @@ export default function Offers() {
       <Modal
         open={modalOpen}
         onClose={closeModal}
-        title={offerText('modal.title', 'Add an offer')}
+        title={
+          editingOffer
+            ? offerText('modal.editTitle', 'Edit offer')
+            : offerText('modal.title', 'Add an offer')
+        }
         footer={
           <>
             <Button type="button" variant="outline" onClick={closeModal} disabled={saving}>
@@ -335,7 +407,11 @@ export default function Offers() {
               form="add-offer-form"
               disabled={!hasServices || !isFormValid || saving}
             >
-              {saving ? offerText('saving', 'Saving…') : offerText('addOffer', 'Add offer')}
+              {saving
+                ? offerText('saving', 'Saving…')
+                : editingOffer
+                  ? offerText('saveChanges', 'Save changes')
+                  : offerText('addOffer', 'Add offer')}
             </Button>
           </>
         }
@@ -400,6 +476,8 @@ export default function Offers() {
               presets={OFFER_PRESETS}
               durationLabel={offerText('fields.howLong', 'How long does it run?')}
               summaryLabel={offerText('fields.runs', 'Offer runs')}
+              // A running offer keeps its start date, even if it's already past.
+              allowPastStart={Boolean(editingOffer)}
             />
           </div>
           {!hasServices && (

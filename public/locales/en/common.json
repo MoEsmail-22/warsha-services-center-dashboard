@@ -142,7 +142,8 @@
     "bookingRejected": "Booking request rejected",
     "jobStageChanged": "Job stage updated",
     "quoteUpdated": "Quote updated",
-    "cashCollected": "Cash payment recorded"
+    "cashCollected": "Cash payment recorded",
+    "offerUpdated": "Offer updated"
   },
   "notificationsPanel": {
     "title": "Notifications",

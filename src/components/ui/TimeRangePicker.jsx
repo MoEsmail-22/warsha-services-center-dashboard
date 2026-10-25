@@ -88,6 +88,8 @@ export function TimeRangePicker({
   startLabel,
   durationLabel,
   summaryLabel,
+  // true when editing something that may already have started (its start date is in the past)
+  allowPastStart = false,
 }) {
   const { t } = useAppTranslation('common');
   const { lang } = useLanguage();
@@ -134,7 +136,7 @@ export function TimeRangePicker({
               type="date"
               label={text('date', 'Date')}
               value={value.startDate}
-              min={today}
+              min={allowPastStart ? undefined : today}
               onChange={(event) => update('startDate', event.target.value)}
             />
             <Input
@@ -173,7 +175,9 @@ export function TimeRangePicker({
               type="date"
               label={text('endDate', 'Until date')}
               value={value.endDate}
-              min={value.startMode === 'later' ? value.startDate : today}
+              min={
+                value.startMode === 'later' ? value.startDate : allowPastStart ? undefined : today
+              }
               onChange={(event) => update('endDate', event.target.value)}
             />
             <Input
