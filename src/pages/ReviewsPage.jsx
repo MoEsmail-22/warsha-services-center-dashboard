@@ -6,7 +6,7 @@ import { useAppTranslation } from '@/hooks/useAppTranslation';
 import { useErrorMessage } from '@/hooks/useErrorMessage';
 import { PAGE_SIZE_OPTIONS, usePaginationParams } from '@/hooks/usePaginationParams';
 import { REVIEW_TYPES } from '@/API/reviewsApi';
-import { Button, Card, Modal } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
 import Avatar from '@/components/ui/Avatar';
 import RatingStars from '@/components/widgets/RatingStars';
 import EmptyState from '@/components/widgets/EmptyState';
@@ -47,7 +47,7 @@ function getRelativeTime(date, t) {
 export default function ReviewsPage() {
   const { t } = useAppTranslation('reviews');
   const { getErrorMessage } = useErrorMessage();
-  const { lists, loadReviews, replyReview } = useReviews();
+  const { lists, loadReviews } = useReviews();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = TABS.find((item) => item.key === searchParams.get('type')) ?? TABS[0];
@@ -71,9 +71,6 @@ export default function ReviewsPage() {
     if (!loaded && !listLoading) loadReviews(tab.type);
   }, [tab.type, loaded, listLoading, loadReviews]);
 
-  const [selectedReview, setSelectedReview] = useState(null);
-  const [replyText, setReplyText] = useState('');
-
   const averageRating = useMemo(() => {
     if (!reviews.length) return 0;
 
@@ -93,25 +90,6 @@ export default function ReviewsPage() {
   const totalPages = Math.max(1, Math.ceil(reviews.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const paginatedReviews = reviews.slice((safePage - 1) * pageSize, safePage * pageSize);
-
-  const openReplyModal = (review) => {
-    setSelectedReview(review);
-    setReplyText(review.reply || '');
-  };
-
-  const closeReplyModal = () => {
-    setSelectedReview(null);
-    setReplyText('');
-  };
-
-  const handleReplySubmit = (event) => {
-    event.preventDefault();
-
-    if (!selectedReview || !replyText.trim()) return;
-
-    replyReview(tab.type, selectedReview.id, replyText.trim());
-    closeReplyModal();
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -218,26 +196,9 @@ export default function ReviewsPage() {
                       <p className="mt-3 text-sm leading-6 text-[#5A6968]">{review.comment}</p>
                     )}
 
-                    {review.reply && (
-                      <div className="mt-3 rounded-lg bg-teal-50 px-3 py-2 text-sm text-[#0E5C5B]">
-                        <span className="font-semibold">{t('yourReply')}:</span> {review.reply}
-                      </div>
-                    )}
-
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-gray-400">
-                        {review.createdAt ? getRelativeTime(review.createdAt, t) : ''}
-                      </span>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto px-0 py-0 text-[#0E5C5B] hover:bg-transparent hover:text-[#084746]"
-                        onClick={() => openReplyModal(review)}
-                      >
-                        {review.reply ? t('editReply') : t('reply')}
-                      </Button>
-                    </div>
+                    <p className="mt-2 text-xs text-gray-400">
+                      {review.createdAt ? getRelativeTime(review.createdAt, t) : ''}
+                    </p>
                   </article>
                 );
               })}
@@ -285,37 +246,6 @@ export default function ReviewsPage() {
           </div>
         </Card>
       </div>
-
-      <Modal
-        open={Boolean(selectedReview)}
-        onClose={closeReplyModal}
-        title={selectedReview?.reply ? t('modal.editTitle') : t('modal.title')}
-        footer={
-          <>
-            <Button variant="outline" type="button" onClick={closeReplyModal}>
-              {t('actions.cancel')}
-            </Button>
-            <Button type="submit" form="reply-review-form">
-              {selectedReview?.reply ? t('actions.update') : t('actions.send')}
-            </Button>
-          </>
-        }
-      >
-        <form id="reply-review-form" onSubmit={handleReplySubmit}>
-          <label htmlFor="review-reply" className="label">
-            {t('modal.replyLabel')}
-          </label>
-
-          <textarea
-            id="review-reply"
-            className="input min-h-28 resize-y"
-            value={replyText}
-            onChange={(event) => setReplyText(event.target.value)}
-            placeholder={t('modal.placeholder')}
-            required
-          />
-        </form>
-      </Modal>
     </div>
   );
 }

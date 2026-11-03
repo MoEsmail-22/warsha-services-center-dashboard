@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal, MoreHorizontal, CalendarX2 } from 'lucide-react';
+import { Search, MoreHorizontal, CalendarX2 } from 'lucide-react';
 import { useBookings } from '../contexts/BookingsContext';
 import { getBooking } from '../API/bookingsApi';
 import { normalizeBooking } from '../utils/normalizeBooking';
@@ -8,7 +8,6 @@ import { useAppTranslation } from '../hooks/useAppTranslation';
 import { PAGE_SIZE_OPTIONS, usePaginationParams } from '../hooks/usePaginationParams';
 import StatusBadge from '../components/widgets/StatusBadge';
 import Avatar from '../components/ui/Avatar';
-import FilterBookingsDrawer from '../components/widgets/FilterBookingsDrawer';
 import BookingDetailsDrawer from '../components/widgets/BookingDetailsDrawer';
 import Pagination from '../components/widgets/Pagination';
 import { EmptyState } from '../components/widgets/EmptyState';
@@ -25,13 +24,6 @@ import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { useNotify } from '../hooks/useNotify';
 import { useErrorMessage } from '../hooks/useErrorMessage';
 
-// Statuses the backend can filter by (GET /Workshop/bookings?status=). "In Progress" is a job
-// stage, not a booking status, so it stays a filter on screen.
-const SERVER_STATUS = {
-  Pending: 'PendingApproval',
-  Confirmed: 'Confirmed',
-  Completed: 'Completed',
-};
 // Wait this long after the last key press before searching.
 const SEARCH_DELAY_MS = 400;
 
@@ -63,8 +55,7 @@ export default function BookingsPage() {
   /*
    * Everything that decides what the page shows lives in the URL, so a link or a
    * refresh opens the same view:
-   *   ?tab=today&q=ahmed&status=pending&from=2026-10-01&to=2026-10-31
-   *    &services=Oil%20Change,Engine&customer=ali&booking=B-001
+   *   ?tab=today&q=ahmed&booking=B-001
    */
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
@@ -73,23 +64,6 @@ export default function BookingsPage() {
     : 'all';
   const search = searchParams.get('q') ?? '';
   const selectedBookingId = searchParams.get('booking');
-
-  const advancedFilters = useMemo(() => {
-    const filters = {
-      search: searchParams.get('customer') ?? '',
-      services: searchParams.get('services')?.split(',').filter(Boolean) ?? [],
-      status: searchParams.get('status') ?? '',
-      dateFrom: searchParams.get('from') ?? '',
-      dateTo: searchParams.get('to') ?? '',
-    };
-    const anySet =
-      filters.search ||
-      filters.services.length ||
-      filters.status ||
-      filters.dateFrom ||
-      filters.dateTo;
-    return anySet ? filters : null;
-  }, [searchParams]);
 
   /**
    * Changes several URL values in ONE update (separate calls in the same click can
@@ -113,8 +87,6 @@ export default function BookingsPage() {
     [setSearchParams]
   );
 
-  // ---- Drawer state ----
-  const [filterOpen, setFilterOpen] = useState(false);
   // Accept / reject a pending booking request from its row.
   const [acceptingId, setAcceptingId] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -182,20 +154,11 @@ export default function BookingsPage() {
   const closeBooking = () => updateParams({ booking: null });
 
   /*
-   * Search, status and dates are sent to the backend, which filters ALL the workshop's
-   * bookings (the list kept on screen only has the latest 100). The week tabs, the service
-   * filter and "In Progress" still filter the result on screen.
+   * The search is sent to the backend, which searches ALL the workshop's bookings (the
+   * list kept on screen only has the latest 100). The tabs still filter on screen.
    */
-  const serverText = (search || advancedFilters?.search || '').trim();
-  const serverStatus = SERVER_STATUS[advancedFilters?.status] ?? '';
-  const serverFrom = advancedFilters?.dateFrom
-    ? new Date(`${advancedFilters.dateFrom}T00:00:00`).toISOString()
-    : '';
-  const serverTo = advancedFilters?.dateTo
-    ? new Date(`${advancedFilters.dateTo}T23:59:59`).toISOString()
-    : '';
-  const serverKey = [serverText, serverStatus, serverFrom, serverTo].join('|');
-  const usesServer = serverKey !== '|||';
+  const serverText = search.trim();
+  const usesServer = serverText !== '';
 
   const [serverRows, setServerRows] = useState(null);
   const [serverError, setServerError] = useState(null);
@@ -210,7 +173,7 @@ export default function BookingsPage() {
 
     let cancelled = false;
     const timer = setTimeout(() => {
-      searchBookings({ search: serverText, status: serverStatus, from: serverFrom, to: serverTo })
+      searchBookings({ search: serverText })
         .then((rows) => !cancelled && setServerRows(rows))
         .catch((err) => !cancelled && setServerError(err));
     }, SEARCH_DELAY_MS);
@@ -218,8 +181,8 @@ export default function BookingsPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- serverKey holds the four values
-  }, [serverKey, serverAttempt, searchBookings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the search changes
+  }, [serverText, serverAttempt, searchBookings]);
 
   // The backend's matches, using the live row (status, countdown, details) when it's on screen.
   const baseBookings = useMemo(() => {
@@ -228,20 +191,12 @@ export default function BookingsPage() {
     return (serverRows ?? []).map((row) => live.get(String(row.id)) ?? withBookingDetails(row));
   }, [usesServer, bookings, serverRows, withBookingDetails]);
 
-  const filtered = useMemo(() => {
-    if (!usesServer) {
-      return filterBookings(bookings, { tab: activeTab, search, advanced: advancedFilters });
-    }
-    // What the backend already checked isn't checked again (it may match on fields the
-    // list doesn't send). When both search boxes are used, the backend got the top one.
-    const advanced = advancedFilters && {
-      ...advancedFilters,
-      search: search ? advancedFilters.search : '',
-      dateFrom: '',
-      dateTo: '',
-    };
-    return filterBookings(baseBookings, { tab: activeTab, search: '', advanced });
-  }, [usesServer, bookings, baseBookings, activeTab, search, advancedFilters]);
+  // The search isn't checked again on screen: the backend may match on fields the list
+  // doesn't send. Only the tab filters here.
+  const filtered = useMemo(
+    () => filterBookings(baseBookings, { tab: activeTab, search: '', advanced: null }),
+    [baseBookings, activeTab]
+  );
 
   const listLoading = usesServer
     ? serverRows === null && !serverError
@@ -292,41 +247,8 @@ export default function BookingsPage() {
     </span>
   );
 
-  const handleApplyFilters = (filters) => {
-    updateParams(
-      {
-        customer: filters.search?.trim(),
-        services: filters.services?.length ? filters.services.join(',') : null,
-        status: filters.status,
-        from: filters.dateFrom,
-        to: filters.dateTo,
-      },
-      { resetPage: true }
-    );
-  };
-
-  const isFiltering = Boolean(search || activeTab !== 'all' || advancedFilters);
-  const clearAllFilters = () =>
-    updateParams(
-      { tab: null, q: null, customer: null, services: null, status: null, from: null, to: null },
-      { resetPage: true }
-    );
-
-  const handleClearFilters = () => {
-    updateParams(
-      { customer: null, services: null, status: null, from: null, to: null },
-      { resetPage: true }
-    );
-  };
-
-  // Check if advanced filters are active
-  const hasActiveFilters =
-    !!advancedFilters &&
-    (advancedFilters.search?.trim() ||
-      advancedFilters.services?.length > 0 ||
-      advancedFilters.status ||
-      advancedFilters.dateFrom ||
-      advancedFilters.dateTo);
+  const isFiltering = Boolean(search || activeTab !== 'all');
+  const clearAllFilters = () => updateParams({ tab: null, q: null }, { resetPage: true });
 
   return (
     <div className="flex h-full flex-col">
@@ -366,32 +288,6 @@ export default function BookingsPage() {
               {t(`tabs.${tab.key}`, { defaultValue: tab.label })}
             </button>
           ))}
-
-          <button
-            onClick={() => setFilterOpen(true)}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              hasActiveFilters
-                ? 'border-[#E08B2F] bg-[#FDF1DE] text-[#C8730A]'
-                : 'border-[#E8E2D8] bg-white text-[#5A5045] hover:bg-[#F2EDE4]'
-            }`}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            {t('filters', { defaultValue: 'Filters' })}
-            {hasActiveFilters && (
-              <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E08B2F] px-1 text-[10px] font-bold text-white">
-                ●
-              </span>
-            )}
-          </button>
-
-          {hasActiveFilters && (
-            <button
-              onClick={handleClearFilters}
-              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50"
-            >
-              Clear filters
-            </button>
-          )}
         </div>
 
         <div className="relative w-full sm:max-w-xs">
@@ -626,12 +522,6 @@ export default function BookingsPage() {
       </div>
 
       {/* ============ DRAWERS ============ */}
-      <FilterBookingsDrawer
-        open={filterOpen}
-        onClose={() => setFilterOpen(false)}
-        onApply={handleApplyFilters}
-        value={advancedFilters}
-      />
       <BookingDetailsDrawer
         open={!!selectedBooking}
         onClose={closeBooking}

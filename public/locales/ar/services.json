@@ -33,8 +33,7 @@
     "nameAr": "اسم الخدمة بالعربية",
     "category": "الفئة",
     "selectCategory": "اختر الفئة",
-    "minPricing": "الحد الأدنى للسعر (جنيه مصري)",
-    "maxPricing": "الحد الأقصى للسعر (جنيه مصري)",
+    "price": "السعر (ج.م)",
     "duration": "المدة (بالدقائق)",
     "descriptionEn": "الوصف بالإنجليزية",
     "descriptionAr": "الوصف بالعربية"
@@ -160,8 +159,7 @@
   "placeholders": {
     "nameEn": "e.g. Oil Change",
     "nameAr": "مثال: تغيير الزيت",
-    "minPricing": "مثال: 200",
-    "maxPricing": "مثال: 500",
+    "price": "مثال: 300",
     "duration": "مثال: 60",
     "descriptionEn": "What's included in this service?",
     "descriptionAr": "ماذا تشمل هذه الخدمة؟"

@@ -8,8 +8,7 @@ const EMPTY_FORM = {
   nameEn: '',
   nameAr: '',
   categoryId: '',
-  minPricing: '',
-  maxPricing: '',
+  price: '',
   durationMinutes: '',
   descriptionEn: '',
   descriptionAr: '',
@@ -29,8 +28,7 @@ function serviceToForm(service, categories) {
     nameEn: service.name?.en ?? '',
     nameAr: service.name?.ar ?? '',
     categoryId: findCategoryId(service, categories),
-    minPricing: String(service.price?.from ?? ''),
-    maxPricing: String(service.price?.to ?? ''),
+    price: String(service.price ?? ''),
     durationMinutes: String(service.durationMinutes ?? ''),
     descriptionEn: service.description?.en ?? '',
     descriptionAr: service.description?.ar ?? '',
@@ -115,26 +113,13 @@ export default function ServiceFormModal({ open, service, onClose, onSave, savin
           />
 
           <Input
-            id={`${formId}-min-pricing`}
+            id={`${formId}-price`}
             type="number"
             min="0"
-
-            label={t('fields.minPricing')}
-            placeholder={t('placeholders.minPricing', { defaultValue: 'e.g. 200' })}
-            value={form.minPricing}
-            onChange={(event) => updateField('minPricing', event.target.value)}
-            required
-          />
-
-          <Input
-            id={`${formId}-max-pricing`}
-            type="number"
-            min={form.minPricing || '0'}
-
-            label={t('fields.maxPricing')}
-            placeholder={t('placeholders.maxPricing', { defaultValue: 'e.g. 500' })}
-            value={form.maxPricing}
-            onChange={(event) => updateField('maxPricing', event.target.value)}
+            label={t('fields.price', { defaultValue: 'Price (EGP)' })}
+            placeholder={t('placeholders.price', { defaultValue: 'e.g. 300' })}
+            value={form.price}
+            onChange={(event) => updateField('price', event.target.value)}
             required
           />
 
