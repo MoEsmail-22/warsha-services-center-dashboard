@@ -93,10 +93,12 @@ function normalizeService(service) {
         '',
     },
     durationMinutes: service.durationMinutes ?? service.duration ?? 0,
-    price: {
-      from: service.price?.from ?? service.minPrice ?? 0,
-      to: service.price?.to ?? service.maxPrice ?? 0,
-    },
+    // One price (older answers sent minPrice / maxPrice; the lower one is used then).
+    price: Number(
+      (typeof service.price === 'object' ? service.price?.from : service.price) ??
+        service.minPrice ??
+        0
+    ),
     visible,
     status: service.status ?? (visible ? 'active' : 'inactive'),
   };
@@ -261,8 +263,7 @@ export function ServicesProvider({ children }) {
     const payload = {
       nameEn: form.nameEn.trim(),
       nameAr: form.nameAr.trim(),
-      minPrice: Number(form.minPricing),
-      maxPrice: Number(form.maxPricing),
+      price: Number(form.price),
       serviceCategoryId,
       duration: Number(form.durationMinutes),
       descriptionEn: form.descriptionEn.trim(),
@@ -288,8 +289,7 @@ export function ServicesProvider({ children }) {
           workshopServiceId: Number(id),
           nameEn: updates.nameEn.trim(),
           nameAr: updates.nameAr.trim(),
-          minPrice: Number(updates.minPricing),
-          maxPrice: Number(updates.maxPricing),
+          price: Number(updates.price),
           serviceCategoryId: resolvedCategoryId,
           duration: Number(updates.durationMinutes),
           descriptionEn: updates.descriptionEn.trim(),
@@ -309,7 +309,7 @@ export function ServicesProvider({ children }) {
       },
       serviceCategoryId: resolvedCategoryId ?? current.serviceCategoryId,
       durationMinutes: Number(updates.durationMinutes),
-      price: { from: Number(updates.minPricing), to: Number(updates.maxPricing) },
+      price: Number(updates.price),
     };
     dispatch({ type: 'UPDATE_SERVICE', payload: updated });
     return result;

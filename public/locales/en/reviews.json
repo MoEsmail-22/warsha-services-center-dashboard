@@ -1,12 +1,9 @@
 ﻿{
   "title": "Reviews",
-  "summary": "{{rating}} average · {{count}} reviews · respond to build trust",
+  "summary": "{{rating}} average · {{count}} reviews",
   "recentReviews": "Recent reviews",
   "ratingBreakdown": "Rating breakdown",
   "loading": "Loading reviews...",
-  "reply": "Reply",
-  "editReply": "Edit reply",
-  "yourReply": "Your reply",
   "unknownCustomer": "Customer",
   "showing": "Showing",
   "of": "of",
@@ -20,17 +17,6 @@
   "empty": {
     "title": "No reviews yet",
     "description": "Customer reviews will appear here."
-  },
-  "modal": {
-    "title": "Reply to review",
-    "editTitle": "Edit reply",
-    "replyLabel": "Your response",
-    "placeholder": "Write a professional response to this review..."
-  },
-  "actions": {
-    "cancel": "Cancel",
-    "send": "Send reply",
-    "update": "Update reply"
   },
   "tabs": {
     "label": "Review type",

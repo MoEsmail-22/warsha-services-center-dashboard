@@ -33,8 +33,7 @@
     "nameAr": "Service Name (Arabic)",
     "category": "Category",
     "selectCategory": "Select category",
-    "minPricing": "Minimum price (EGP)",
-    "maxPricing": "Maximum price (EGP)",
+    "price": "Price (EGP)",
     "duration": "Duration (minutes)",
     "descriptionEn": "Description (English)",
     "descriptionAr": "Description (Arabic)"
@@ -160,8 +159,7 @@
   "placeholders": {
     "nameEn": "e.g. Oil Change",
     "nameAr": "مثال: تغيير الزيت",
-    "minPricing": "e.g. 200",
-    "maxPricing": "e.g. 500",
+    "price": "e.g. 300",
     "duration": "e.g. 60",
     "descriptionEn": "What's included in this service?",
     "descriptionAr": "ماذا تشمل هذه الخدمة؟"

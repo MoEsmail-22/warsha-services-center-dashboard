@@ -1,12 +1,9 @@
 ﻿{
   "title": "التقييمات",
-  "summary": "{{rating}} متوسط التقييم · {{count}} تقييمات · رد لبناء الثقة",
+  "summary": "{{rating}} متوسط التقييم · {{count}} تقييمات",
   "recentReviews": "أحدث التقييمات",
   "ratingBreakdown": "تفصيل التقييمات",
   "loading": "جارٍ تحميل التقييمات...",
-  "reply": "رد",
-  "editReply": "تعديل الرد",
-  "yourReply": "ردك",
   "unknownCustomer": "عميل",
   "showing": "عرض",
   "of": "من",
@@ -20,17 +17,6 @@
   "empty": {
     "title": "لا توجد تقييمات بعد",
     "description": "ستظهر تقييمات العملاء هنا."
-  },
-  "modal": {
-    "title": "الرد على التقييم",
-    "editTitle": "تعديل الرد",
-    "replyLabel": "ردك",
-    "placeholder": "اكتب ردًا احترافيًا على هذا التقييم..."
-  },
-  "actions": {
-    "cancel": "إلغاء",
-    "send": "إرسال الرد",
-    "update": "تحديث الرد"
   },
   "tabs": {
     "label": "نوع التقييم",

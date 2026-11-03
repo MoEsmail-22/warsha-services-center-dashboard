@@ -40,7 +40,6 @@ export function normalizeReview(review = {}, index = 0) {
     bookingId: review.bookingId ?? null,
     bookingNumber: firstText(review.bookingNumber),
     createdAt: review.createdAt ?? review.createdOn ?? review.date ?? null,
-    reply: firstText(review.reply, review.workshopReply, review.response) || null,
   };
 }
 

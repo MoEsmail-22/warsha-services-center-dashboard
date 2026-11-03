@@ -49,12 +49,10 @@ function formatDuration(totalMinutes, language) {
 }
 
 function formatPrice(price, language) {
-  const amount =
-    price.from === price.to
-      ? price.from
-      : `${price.from.toLocaleString()} - ${price.to.toLocaleString()}`;
-
-  return language === 'ar' ? `${amount} ج.م` : `${amount.toLocaleString?.() ?? amount} EGP`;
+  const amount = new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US').format(
+    Number(price) || 0
+  );
+  return language === 'ar' ? `${amount} ج.م` : `${amount} EGP`;
 }
 
 export default function ServicesPricingPage() {

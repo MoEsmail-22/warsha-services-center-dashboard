@@ -58,18 +58,6 @@ export function ReviewsProvider({ children }) {
     else setLists({ [REVIEW_TYPES.workshop]: emptyList, [REVIEW_TYPES.service]: emptyList });
   }, [enabled, user?.id, loadReviews]);
 
-  // There is no reply endpoint yet: a reply stays on this screen until the page reloads.
-  const replyReview = (type, id, text) =>
-    setLists((current) => ({
-      ...current,
-      [type]: {
-        ...current[type],
-        items: current[type].items.map((review) =>
-          review.id === id ? { ...review, reply: text } : review
-        ),
-      },
-    }));
-
   const workshopReviews = lists[REVIEW_TYPES.workshop].items;
   const value = useMemo(() => {
     const totalReviews = workshopReviews.length;
@@ -80,8 +68,7 @@ export function ReviewsProvider({ children }) {
           )
         )
       : 0;
-    return { lists, loadReviews, replyReview, avgRating, totalReviews };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- replyReview only uses setLists
+    return { lists, loadReviews, avgRating, totalReviews };
   }, [lists, loadReviews, workshopReviews]);
 
   return <ReviewsContext.Provider value={value}>{children}</ReviewsContext.Provider>;

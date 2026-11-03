@@ -182,8 +182,7 @@ apiClient.interceptors.request.use(async (config) => {
   const devAuthEnabled = import.meta.env.VITE_ENABLE_DEV_AUTH === 'true';
   const devToken = devAuthEnabled ? import.meta.env.VITE_DEV_ACCESS_TOKEN : null;
   const token =
-    devToken ||
-    (typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null);
+    devToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null);
 
   if (!devToken && token && typeof localStorage !== 'undefined') {
     const refreshToken = localStorage.getItem('auth_refresh_token');
